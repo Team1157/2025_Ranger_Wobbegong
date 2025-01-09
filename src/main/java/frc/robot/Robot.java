@@ -4,6 +4,9 @@ package frc.robot;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
@@ -30,9 +33,13 @@ public class Robot extends TimedRobot {
 
   // Simulation-related fields
   private final Field2d m_field = new Field2d();
-  private Pose3d m_pose = new Pose3d(); // Robot's position and orientation in 3D space
-  private Translation3d m_velocity = new Translation3d(); // Robot's velocity in 3D space
-  private Rotation3d m_rotation = new Rotation3d(); // Robot's rotation rates (pitch, roll, yaw)
+  private Pose3d m_pose = new Pose3d();
+  private Translation3d m_velocity = new Translation3d();
+  private Rotation3d m_rotation = new Rotation3d();
+
+  // NetworkTables for AdvantageScope
+  private NetworkTable m_advantageScopeTable;
+  private NetworkTableEntry m_poseEntry;
 
   public Robot() {
     // Set up thrusters in the SendableRegistry for debugging
@@ -49,6 +56,11 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     // Initialize simulation visualization
+    SmartDashboard.putData("Field", m_field);
+
+    // Initialize NetworkTables for AdvantageScope
+    m_advantageScopeTable = NetworkTableInstance.getDefault().getTable("AdvantageScope");
+    m_poseEntry = m_advantageScopeTable.getEntry("Pose3d");
     SmartDashboard.putData("Field", m_field);
   }
 
@@ -161,9 +173,25 @@ public class Robot extends TimedRobot {
     // Update the simulation visualization
     m_field.setRobotPose(m_pose.toPose2d());
   }
+  private void publishPoseToAdvantageScope() {
+    // Convert Pose3d data into a double array format
+    double[] poseData = new double[]{
+        m_pose.getTranslation().getX(),
+        m_pose.getTranslation().getY(),
+        m_pose.getTranslation().getZ(),
+        m_pose.getRotation().getX(),
+        m_pose.getRotation().getY(),
+        m_pose.getRotation().getZ()
+    };
 
+    // Publish the pose data
+    m_poseEntry.setDoubleArray(poseData);
+  }
   @Override
   public void simulationPeriodic() {
+    // Publish pose to AdvantageScope
+    publishPoseToAdvantageScope();
+
     // Update simulation telemetry
     SmartDashboard.putString("Pose", m_pose.toString());
     SmartDashboard.putString("Velocity", m_velocity.toString());
