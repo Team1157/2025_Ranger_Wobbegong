@@ -20,14 +20,14 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  */
 public class Robot extends TimedRobot {
   // Thruster definitions
-  private final PWMSparkMax m_leftFrontVertical = new PWMSparkMax(0);
-  private final PWMSparkMax m_leftRearVertical = new PWMSparkMax(1);
-  private final PWMSparkMax m_rightFrontVertical = new PWMSparkMax(2);
-  private final PWMSparkMax m_rightRearVertical = new PWMSparkMax(3);
-  private final PWMSparkMax m_leftFrontHorizontal = new PWMSparkMax(4);
-  private final PWMSparkMax m_leftRearHorizontal = new PWMSparkMax(5);
-  private final PWMSparkMax m_rightFrontHorizontal = new PWMSparkMax(6);
-  private final PWMSparkMax m_rightRearHorizontal = new PWMSparkMax(7);
+  private final PWMSparkMax m_leftFront45 = new PWMSparkMax(0);
+  private final PWMSparkMax m_leftRear45 = new PWMSparkMax(1);
+  private final PWMSparkMax m_rightFront45 = new PWMSparkMax(2);
+  private final PWMSparkMax m_rightRear45 = new PWMSparkMax(3);
+  private final PWMSparkMax m_leftFrontForward = new PWMSparkMax(4);
+  private final PWMSparkMax m_leftRearForward = new PWMSparkMax(5);
+  private final PWMSparkMax m_rightFrontForward = new PWMSparkMax(6);
+  private final PWMSparkMax m_rightRearForward = new PWMSparkMax(7);
 
   private final XboxController m_controller = new XboxController(0);
 
@@ -43,14 +43,14 @@ public class Robot extends TimedRobot {
 
   public Robot() {
     // Set up thrusters in the SendableRegistry for debugging
-    SendableRegistry.addChild(m_leftFrontVertical, "LeftFrontVertical");
-    SendableRegistry.addChild(m_leftRearVertical, "LeftRearVertical");
-    SendableRegistry.addChild(m_rightFrontVertical, "RightFrontVertical");
-    SendableRegistry.addChild(m_rightRearVertical, "RightRearVertical");
-    SendableRegistry.addChild(m_leftFrontHorizontal, "LeftFrontHorizontal");
-    SendableRegistry.addChild(m_leftRearHorizontal, "LeftRearHorizontal");
-    SendableRegistry.addChild(m_rightFrontHorizontal, "RightFrontHorizontal");
-    SendableRegistry.addChild(m_rightRearHorizontal, "RightRearHorizontal");
+    SendableRegistry.addChild(m_leftFront45, "LeftFront45");
+    SendableRegistry.addChild(m_leftRear45, "LeftRear45");
+    SendableRegistry.addChild(m_rightFront45, "RightFront45");
+    SendableRegistry.addChild(m_rightRear45, "RightRear45");
+    SendableRegistry.addChild(m_leftFrontForward, "LeftFrontForward");
+    SendableRegistry.addChild(m_leftRearForward, "LeftRearForward");
+    SendableRegistry.addChild(m_rightFrontForward, "RightFrontForward");
+    SendableRegistry.addChild(m_rightRearForward, "RightRearForward");
   }
 
   @Override
@@ -72,36 +72,35 @@ public class Robot extends TimedRobot {
     double z = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
     double rotate = applyDeadband(-m_controller.getLeftX(), 0.1); // Rotation
 
-    // Calculate power for vertical thrusters for up/down and rotation
-    double leftFrontVerticalPower = z + rotate;
-    double leftRearVerticalPower = z + rotate;
-    double rightFrontVerticalPower = z - rotate;
-    double rightRearVerticalPower = z - rotate;
+    // Calculate power for thrusters facing forward (forward/backward motion)
+    double leftFrontForwardPower = x;
+    double leftRearForwardPower = x;
+    double rightFrontForwardPower = x;
+    double rightRearForwardPower = x;
 
-    // Calculate power for horizontal thrusters for forward/backward and strafing
-    double leftFrontHorizontalPower = x + y;
-    double leftRearHorizontalPower = x - y;
-    double rightFrontHorizontalPower = x - y;
-    double rightRearHorizontalPower = x + y;
+    // Calculate power for thrusters at 45 degrees (strafing and rotation)
+    double leftFront45Power = y + rotate;
+    double leftRear45Power = -y + rotate;
+    double rightFront45Power = y - rotate;
+    double rightRear45Power = -y - rotate;
 
     // Set power to thrusters
-    m_leftFrontVertical.set(leftFrontVerticalPower);
-    m_leftRearVertical.set(leftRearVerticalPower);
-    m_rightFrontVertical.set(rightFrontVerticalPower);
-    m_rightRearVertical.set(rightRearVerticalPower);
+    m_leftFrontForward.set(leftFrontForwardPower);
+    m_leftRearForward.set(leftRearForwardPower);
+    m_rightFrontForward.set(rightFrontForwardPower);
+    m_rightRearForward.set(rightRearForwardPower);
 
-    m_leftFrontHorizontal.set(leftFrontHorizontalPower);
-    m_leftRearHorizontal.set(leftRearHorizontalPower);
-    m_rightFrontHorizontal.set(rightFrontHorizontalPower);
-    m_rightRearHorizontal.set(rightRearHorizontalPower);
+    m_leftFront45.set(leftFront45Power);
+    m_leftRear45.set(leftRear45Power);
+    m_rightFront45.set(rightFront45Power);
+    m_rightRear45.set(rightRear45Power);
 
     // Update simulation
     updateSimulation(x, y, z, rotate);
   }
 
   /**
-   * Applies a deadband to the joystick input to filter out small, unintended movements 
-   * and shitty joysticks
+   * Applies a deadband to the joystick input to filter out small, unintended movements.
    *
    * @param value    The joystick input value.
    * @param deadband The deadband threshold.
@@ -173,6 +172,7 @@ public class Robot extends TimedRobot {
     // Update the simulation visualization
     m_field.setRobotPose(m_pose.toPose2d());
   }
+
   private void publishPoseToAdvantageScope() {
     // Convert Pose3d data into a double array format
     double[] poseData = new double[]{
@@ -187,6 +187,7 @@ public class Robot extends TimedRobot {
     // Publish the pose data
     m_poseEntry.setDoubleArray(poseData);
   }
+
   @Override
   public void simulationPeriodic() {
     // Publish pose to AdvantageScope
