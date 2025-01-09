@@ -1,29 +1,41 @@
 // Copyright (c) Ada Tessar
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
- * This class is used to control an underwater robot with 8 thrusters (4 on each side) configured
- * for full 3D movement. The robot moves based on Xbox controller inputs.
+ * This class controls an underwater robot with 8 thrusters configured for full 3D movement
+ * and includes simulation for testing in a virtual environment.
  */
 public class Robot extends TimedRobot {
-    private final PWMSparkMax m_leftFrontVertical = new PWMSparkMax(0); // Left front vertical thruster
-    private final PWMSparkMax m_leftRearVertical = new PWMSparkMax(1); // Left rear vertical thruster
-    private final PWMSparkMax m_rightFrontVertical = new PWMSparkMax(2); // Right front vertical thruster
-    private final PWMSparkMax m_rightRearVertical = new PWMSparkMax(3); // Right rear vertical thruster
-    private final PWMSparkMax m_leftFrontHorizontal = new PWMSparkMax(4); // Left front horizontal thruster
-    private final PWMSparkMax m_leftRearHorizontal = new PWMSparkMax(5); // Left rear horizontal thruster
-    private final PWMSparkMax m_rightFrontHorizontal = new PWMSparkMax(6); // Right front horizontal thruster
-    private final PWMSparkMax m_rightRearHorizontal = new PWMSparkMax(7); // Right rear horizontal thruster
+    // Thruster definitions
+    private final PWMSparkMax m_leftFrontVertical = new PWMSparkMax(0);
+    private final PWMSparkMax m_leftRearVertical = new PWMSparkMax(1);
+    private final PWMSparkMax m_rightFrontVertical = new PWMSparkMax(2);
+    private final PWMSparkMax m_rightRearVertical = new PWMSparkMax(3);
+    private final PWMSparkMax m_leftFrontHorizontal = new PWMSparkMax(4);
+    private final PWMSparkMax m_leftRearHorizontal = new PWMSparkMax(5);
+    private final PWMSparkMax m_rightFrontHorizontal = new PWMSparkMax(6);
+    private final PWMSparkMax m_rightRearHorizontal = new PWMSparkMax(7);
 
     private final XboxController m_controller = new XboxController(0);
+    
+    // Simulation-related fields
+    private final Field2d m_field = new Field2d();
+    private Pose3d m_pose = new Pose3d(); // Robot's position and orientation in 3D space
+    private Translation3d m_velocity = new Translation3d(); // Robot's velocity in 3D space
+    private Rotation3d m_rotation = new Rotation3d(); // Robot's rotation rates (pitch, roll, yaw)
 
     public Robot() {
-        // Set up thrusters in the SendableRegistry for debugging if needed (I will need it)
+        // Set up thrusters in the SendableRegistry for debugging
         SendableRegistry.addChild(m_leftFrontVertical, "LeftFrontVertical");
         SendableRegistry.addChild(m_leftRearVertical, "LeftRearVertical");
         SendableRegistry.addChild(m_rightFrontVertical, "RightFrontVertical");
@@ -35,12 +47,18 @@ public class Robot extends TimedRobot {
     }
 
     @Override
+    public void robotInit() {
+        // Initialize simulation visualization
+        SmartDashboard.putData("Field", m_field);
+    }
+
+    @Override
     public void teleopPeriodic() {
-        // Get input values from the controller
-        double x = -m_controller.getLeftY(); // Forward/backward (±x)
-        double y = -m_controller.getRightX(); // Left/right (±y)
-        double z = -m_controller.getRightY(); // Up/down (±z)
-        double rotate = m_controller.getLeftX(); // Rotation
+        // Get input values from the controller and apply deadbands
+        double x = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
+        double y = applyDeadband(-m_controller.getRightX(), 0.1); // Left/right (±y)
+        double z = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
+        double rotate = applyDeadband(m_controller.getLeftX(), 0.1); // Rotation
 
         // Calculate power for vertical thrusters for up/down and rotation
         double leftFrontVerticalPower = z + rotate;
@@ -64,17 +82,97 @@ public class Robot extends TimedRobot {
         m_leftRearHorizontal.set(leftRearHorizontalPower);
         m_rightFrontHorizontal.set(rightFrontHorizontalPower);
         m_rightRearHorizontal.set(rightRearHorizontalPower);
+
+        // Update simulation
+        updateSimulation(x, y, z, rotate);
+    }
+
+    /**
+     * Applies a deadband to the joystick input to filter out small, unintended movements.
+     *
+     * @param value    The joystick input value.
+     * @param deadband The deadband threshold.
+     * @return The adjusted joystick value.
+     */
+    private double applyDeadband(double value, double deadband) {
+        if (Math.abs(value) > deadband) {
+            return Math.copySign((Math.abs(value) - deadband) / (1.0 - deadband), value);
+        } else {
+            return 0.0;
+        }
+    }
+
+    /**
+     * Updates the simulation state based on the current inputs.
+     *
+     * @param x      Forward/backward input
+     * @param y      Left/right input
+     * @param z      Up/down input
+     * @param rotate Rotation input
+     */
+    private void updateSimulation(double x, double y, double z, double rotate) {
+        // Time step (assuming teleopPeriodic is called every 20ms)
+        double deltaTime = 0.02;
+
+        // Calculate forces (simplified physics)
+        double verticalForce = z;
+        double horizontalXForce = x;
+        double horizontalYForce = y;
+        double rotationalForce = rotate;
+
+        // Update velocity (basic physics: force impacts velocity)
+        m_velocity = new Translation3d(
+                m_velocity.getX() + horizontalXForce * deltaTime,
+                m_velocity.getY() + horizontalYForce * deltaTime,
+                m_velocity.getZ() + verticalForce * deltaTime
+        );
+
+        // Update rotation rates (yaw for simplicity)
+        m_rotation = new Rotation3d(
+                m_rotation.getX(),
+                m_rotation.getY(),
+                m_rotation.getZ() + rotationalForce * deltaTime
+        );
+
+        // Update pose (position and orientation)
+        m_pose = new Pose3d(
+                m_pose.getTranslation().plus(m_velocity.times(deltaTime)),
+                new Rotation3d(
+                        m_pose.getRotation().getX() + m_rotation.getX() * deltaTime,
+                        m_pose.getRotation().getY() + m_rotation.getY() * deltaTime,
+                        m_pose.getRotation().getZ() + m_rotation.getZ() * deltaTime
+                )
+        );
+
+        // Update the simulation visualization
+        m_field.setRobotPose(m_pose.toPose2d());
     }
 
     @Override
-    public void autonomousInit() {}
+    public void simulationPeriodic() {
+        // Update simulation telemetry
+        SmartDashboard.putString("Pose", m_pose.toString());
+        SmartDashboard.putString("Velocity", m_velocity.toString());
+        SmartDashboard.putString("Rotation", m_rotation.toString());
+    }
 
     @Override
-    public void autonomousPeriodic() {}
+    public void autonomousInit() {
+        // Autonomous initialization code here
+    }
 
     @Override
-    public void testInit() {}
+    public void autonomousPeriodic() {
+        // Autonomous periodic code here
+    }
 
     @Override
-    public void testPeriodic() {}
+    public void testInit() {
+        // Test initialization code here
+    }
+
+    @Override
+    public void testPeriodic() {
+        // Test periodic code here
+    }
 }
