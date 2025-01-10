@@ -10,6 +10,7 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.util.sendable.SendableRegistry;
+import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -21,7 +22,7 @@ import frc.robot.util.Elastic;
  * and includes simulation for testing in a virtual environment.
  */
 public class Robot extends LoggedRobot {
-  
+
   // Thruster definitions
   private final PWMSparkMax m_leftFront45 = new PWMSparkMax(0);
   private final PWMSparkMax m_leftRear45 = new PWMSparkMax(1);
@@ -34,7 +35,10 @@ public class Robot extends LoggedRobot {
   private final PWMSparkMax m_newtonGripper = new PWMSparkMax(9);
   private final XboxController m_controller = new XboxController(0);
 
-  //For the notifications
+  // Gyro definition
+  private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro();
+
+  // For notifications
   private String lastGripperState = "Stopped";
 
   // Simulation-related fields
@@ -64,63 +68,90 @@ public class Robot extends LoggedRobot {
     // Initialize simulation visualization
     SmartDashboard.putData("Field", m_field);
     SendableRegistry.addChild(m_newtonGripper, "NewtonGripper");
+
     // Initialize NetworkTables for AdvantageScope
     m_advantageScopeTable = NetworkTableInstance.getDefault().getTable("AdvantageScope");
     m_poseEntry = m_advantageScopeTable.getEntry("Pose3d");
     SmartDashboard.putData("Field", m_field);
+
+    // Calibrate the gyro on startup
+    m_gyro.calibrate();
+    Elastic.sendNotification(new Elastic.Notification()
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Gyro Calibration")
+        .withDescription("Gyro calibrating on startup.")
+        .withDisplaySeconds(5.0));
   }
 
   @Override
   public void teleopPeriodic() {
-      // Get input values from the controller and apply deadbands
-      double x = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
-      double y = applyDeadband(-m_controller.getRightX(), 0.1); // Left/right (±y)
-      double z = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
-      double rotate = applyDeadband(-m_controller.getLeftX(), 0.1); // Rotation
-  
-      // Set power to thrusters
-      m_leftFrontForward.set(x);
-      m_leftRearForward.set(x);
-      m_rightFrontForward.set(x);
-      m_rightRearForward.set(x);
-  
-      m_leftFront45.set(y + rotate);
-      m_leftRear45.set(-y + rotate);
-      m_rightFront45.set(y - rotate);
-      m_rightRear45.set(-y - rotate);
-  
-      // Control the Newton gripper
-      Elastic.Notification notification = new Elastic.Notification();
-  
-      String currentGripperState = "Stopped";
-      if (m_controller.getAButton()) {
-          // Open the gripper
-          m_newtonGripper.set(1.0); // Full forward power
-          currentGripperState = "Opening";
-      } else if (m_controller.getBButton()) {
-          // Close the gripper
-          m_newtonGripper.set(-1.0); // Full reverse power
-          currentGripperState = "Closing";
-      } else {
-          // Stop the gripper
-          m_newtonGripper.set(0.0);
-      }
-  
-      // Notification logic
-      if (!currentGripperState.equals(lastGripperState)) {
-          Elastic.sendNotification(notification
-              .withLevel(Elastic.Notification.NotificationLevel.INFO)
-              .withTitle("Gripper " + currentGripperState)
-              .withDescription("Power set to: " + m_newtonGripper.getVoltage())
-              .withDisplaySeconds(5.0)
-          );
-          lastGripperState = currentGripperState;
-      }
-  
-      // Update simulation
-      updateSimulation(x, y, z, rotate);
+    // Get input values from the controller and apply deadbands
+    double x = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
+    double y = applyDeadband(-m_controller.getRightX(), 0.1); // Left/right (±y)
+    double z = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
+    double rotate = applyDeadband(-m_controller.getLeftX(), 0.1); // Rotation
+
+    // Set power to thrusters
+    m_leftFrontForward.set(x);
+    m_leftRearForward.set(x);
+    m_rightFrontForward.set(x);
+    m_rightRearForward.set(x);
+
+    m_leftFront45.set(y + rotate);
+    m_leftRear45.set(-y + rotate);
+    m_rightFront45.set(y - rotate);
+    m_rightRear45.set(-y - rotate);
+
+    // Control the Newton gripper
+    Elastic.Notification notification = new Elastic.Notification();
+
+    String currentGripperState = "Stopped";
+    if (m_controller.getAButton()) {
+      // Open the gripper
+      m_newtonGripper.set(1.0); // Full forward power
+      currentGripperState = "Opening";
+    } else if (m_controller.getBButton()) {
+      // Close the gripper
+      m_newtonGripper.set(-1.0); // Full reverse power
+      currentGripperState = "Closing";
+    } else {
+      // Stop the gripper
+      m_newtonGripper.set(0.0);
+    }
+
+    // Notification logic for Newton gripper
+    if (!currentGripperState.equals(lastGripperState)) {
+      Elastic.sendNotification(notification
+          .withLevel(Elastic.Notification.NotificationLevel.INFO)
+          .withTitle("Gripper " + currentGripperState)
+          .withDescription("Power set to: " + m_newtonGripper.getVoltage())
+          .withDisplaySeconds(5.0));
+      lastGripperState = currentGripperState;
+    }
+
+    // Gyro control and notifications
+    if (m_controller.getXButtonPressed()) {
+      m_gyro.calibrate();
+      Elastic.sendNotification(new Elastic.Notification()
+          .withLevel(Elastic.Notification.NotificationLevel.WARNING)
+          .withTitle("Gyro Calibration")
+          .withDescription("Gyro calibrating as requested.")
+          .withDisplaySeconds(5.0));
+    }
+
+    if (m_controller.getYButtonPressed()) {
+      m_gyro.reset();
+      Elastic.sendNotification(new Elastic.Notification()
+          .withLevel(Elastic.Notification.NotificationLevel.INFO)
+          .withTitle("Gyro Reset")
+          .withDescription("Gyro heading reset to zero.")
+          .withDisplaySeconds(5.0));
+    }
+
+    // Update simulation
+    updateSimulation(x, y, z, rotate);
   }
-  
+
   /**
    * Applies a deadband to the joystick input to filter out small, unintended movements.
    *
@@ -199,11 +230,11 @@ public class Robot extends LoggedRobot {
     // Convert Pose3d data into a double array format
     double[] poseData = new double[] {
       m_pose.getTranslation().getX(),
-        m_pose.getTranslation().getY(),
-        m_pose.getTranslation().getZ(),
-        m_pose.getRotation().getX(),
-        m_pose.getRotation().getY(),
-        m_pose.getRotation().getZ()
+      m_pose.getTranslation().getY(),
+      m_pose.getTranslation().getZ(),
+      m_pose.getRotation().getX(),
+      m_pose.getRotation().getY(),
+      m_pose.getRotation().getZ()
     };
 
     // Publish the pose data
