@@ -29,8 +29,11 @@ public class Robot extends TimedRobot {
   private final PWMSparkMax m_leftRearForward = new PWMSparkMax(5);
   private final PWMSparkMax m_rightFrontForward = new PWMSparkMax(6);
   private final PWMSparkMax m_rightRearForward = new PWMSparkMax(7);
-
+  private final PWMSparkMax m_newtonGripper = new PWMSparkMax(9);
   private final XboxController m_controller = new XboxController(0);
+
+  //For the notifications
+  private String lastGripperState = "Stopped";
 
   // Simulation-related fields
   private final Field2d m_field = new Field2d();
@@ -58,7 +61,7 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     // Initialize simulation visualization
     SmartDashboard.putData("Field", m_field);
-
+    SendableRegistry.addChild(m_newtonGripper, "NewtonGripper");
     // Initialize NetworkTables for AdvantageScope
     m_advantageScopeTable = NetworkTableInstance.getDefault().getTable("AdvantageScope");
     m_poseEntry = m_advantageScopeTable.getEntry("Pose3d");
@@ -67,91 +70,55 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    // Get input values from the controller and apply deadbands
-    double x = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
-    double y = applyDeadband(-m_controller.getRightX(), 0.1); // Left/right (±y)
-    double z = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
-    double rotate = applyDeadband(-m_controller.getLeftX(), 0.1); // Rotation
-
-    // Calculate power for thrusters facing forward (forward/backward motion)
-    double leftFrontForwardPower = x;
-    double leftRearForwardPower = x;
-    double rightFrontForwardPower = x;
-    double rightRearForwardPower = x;
-
-    // Calculate power for thrusters at 45 degrees (strafing and rotation)
-    double leftFront45Power = y + rotate;
-    double leftRear45Power = -y + rotate;
-    double rightFront45Power = y - rotate;
-    double rightRear45Power = -y - rotate;
-
-    // Set power to thrusters
-    m_leftFrontForward.set(leftFrontForwardPower);
-    m_leftRearForward.set(leftRearForwardPower);
-    m_rightFrontForward.set(rightFrontForwardPower);
-    m_rightRearForward.set(rightRearForwardPower);
-
-    m_leftFront45.set(leftFront45Power);
-    m_leftRear45.set(leftRear45Power);
-    m_rightFront45.set(rightFront45Power);
-    m_rightRear45.set(rightRear45Power);
-
-    // Update simulation
-    updateSimulation(x, y, z, rotate);
-    Elastic.Notification notification = new Elastic.Notification();
-
-    /* A BUNCH of notifications to elastic for debugging */
-
-    Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Left Front Forward Thruster")
-        .withDescription("Power: " + leftFrontForwardPower)
-        .withDisplaySeconds(5.0)
-    );
-    Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Left Rear Forward Thruster")
-        .withDescription("Power: " + leftRearForwardPower)
-        .withDisplaySeconds(5.0)
-    );
-    Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Right Front Forward Thruster")
-        .withDescription("Power: " + rightFrontForwardPower)
-        .withDisplaySeconds(5.0)
-    );
-    Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Right Rear Forward Thruster")
-        .withDescription("Power: " + rightRearForwardPower)
-        .withDisplaySeconds(5.0)
-    );
-    Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Left Front 45 Thruster")
-        .withDescription("Power: " + leftFront45Power)
-        .withDisplaySeconds(5.0)
-    );
-    Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Left Rear 45 Thruster")
-        .withDescription("Power: " + leftRear45Power)
-        .withDisplaySeconds(5.0)
-    );
-    Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Right Front 45 Thruster")
-        .withDescription("Power: " + rightFront45Power)
-        .withDisplaySeconds(5.0)
-    );
-    Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Right Rear 45 Thruster")
-        .withDescription("Power: " + rightRear45Power)
-        .withDisplaySeconds(5.0)
-    );
+      // Get input values from the controller and apply deadbands
+      double x = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
+      double y = applyDeadband(-m_controller.getRightX(), 0.1); // Left/right (±y)
+      double z = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
+      double rotate = applyDeadband(-m_controller.getLeftX(), 0.1); // Rotation
+  
+      // Set power to thrusters
+      m_leftFrontForward.set(x);
+      m_leftRearForward.set(x);
+      m_rightFrontForward.set(x);
+      m_rightRearForward.set(x);
+  
+      m_leftFront45.set(y + rotate);
+      m_leftRear45.set(-y + rotate);
+      m_rightFront45.set(y - rotate);
+      m_rightRear45.set(-y - rotate);
+  
+      // Control the Newton gripper
+      Elastic.Notification notification = new Elastic.Notification();
+  
+      String currentGripperState = "Stopped";
+      if (m_controller.getAButton()) {
+          // Open the gripper
+          m_newtonGripper.set(1.0); // Full forward power
+          currentGripperState = "Opening";
+      } else if (m_controller.getBButton()) {
+          // Close the gripper
+          m_newtonGripper.set(-1.0); // Full reverse power
+          currentGripperState = "Closing";
+      } else {
+          // Stop the gripper
+          m_newtonGripper.set(0.0);
+      }
+  
+      // Notification logic
+      if (!currentGripperState.equals(lastGripperState)) {
+          Elastic.sendNotification(notification
+              .withLevel(Elastic.Notification.NotificationLevel.INFO)
+              .withTitle("Gripper " + currentGripperState)
+              .withDescription("Power set to: " + m_newtonGripper.getVoltage())
+              .withDisplaySeconds(5.0)
+          );
+          lastGripperState = currentGripperState;
+      }
+  
+      // Update simulation
+      updateSimulation(x, y, z, rotate);
   }
-
+  
   /**
    * Applies a deadband to the joystick input to filter out small, unintended movements.
    *
@@ -228,8 +195,8 @@ public class Robot extends TimedRobot {
 
   private void publishPoseToAdvantageScope() {
     // Convert Pose3d data into a double array format
-    double[] poseData = new double[]{
-        m_pose.getTranslation().getX(),
+    double[] poseData = new double[] {
+      m_pose.getTranslation().getX(),
         m_pose.getTranslation().getY(),
         m_pose.getTranslation().getZ(),
         m_pose.getRotation().getX(),
