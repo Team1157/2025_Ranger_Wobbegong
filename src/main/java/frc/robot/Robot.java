@@ -13,6 +13,7 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.util.Elastic;
 
 /**
  * This class controls an underwater robot with 8 thrusters configured for full 3D movement
@@ -97,6 +98,58 @@ public class Robot extends TimedRobot {
 
     // Update simulation
     updateSimulation(x, y, z, rotate);
+    Elastic.Notification notification = new Elastic.Notification();
+
+    /* A BUNCH of notifications to elastic for debugging */
+
+    Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Left Front Forward Thruster")
+        .withDescription("Power: " + leftFrontForwardPower)
+        .withDisplaySeconds(5.0)
+    );
+    Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Left Rear Forward Thruster")
+        .withDescription("Power: " + leftRearForwardPower)
+        .withDisplaySeconds(5.0)
+    );
+    Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Right Front Forward Thruster")
+        .withDescription("Power: " + rightFrontForwardPower)
+        .withDisplaySeconds(5.0)
+    );
+    Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Right Rear Forward Thruster")
+        .withDescription("Power: " + rightRearForwardPower)
+        .withDisplaySeconds(5.0)
+    );
+    Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Left Front 45 Thruster")
+        .withDescription("Power: " + leftFront45Power)
+        .withDisplaySeconds(5.0)
+    );
+    Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Left Rear 45 Thruster")
+        .withDescription("Power: " + leftRear45Power)
+        .withDisplaySeconds(5.0)
+    );
+    Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Right Front 45 Thruster")
+        .withDescription("Power: " + rightFront45Power)
+        .withDisplaySeconds(5.0)
+    );
+    Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Right Rear 45 Thruster")
+        .withDescription("Power: " + rightRear45Power)
+        .withDisplaySeconds(5.0)
+    );
   }
 
   /**
