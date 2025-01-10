@@ -1,6 +1,8 @@
 // Copyright (c) Ada Tessar
 package frc.robot;
 
+import org.littletonrobotics.junction.LoggedRobot;
+
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -8,7 +10,6 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.util.sendable.SendableRegistry;
-import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -19,7 +20,8 @@ import frc.robot.util.Elastic;
  * This class controls an underwater robot with 8 thrusters configured for full 3D movement
  * and includes simulation for testing in a virtual environment.
  */
-public class Robot extends TimedRobot {
+public class Robot extends LoggedRobot {
+  
   // Thruster definitions
   private final PWMSparkMax m_leftFront45 = new PWMSparkMax(0);
   private final PWMSparkMax m_leftRear45 = new PWMSparkMax(1);
