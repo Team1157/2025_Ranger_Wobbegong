@@ -3,6 +3,7 @@ package frc.robot;
 
 import org.littletonrobotics.junction.LoggedRobot;
 
+import edu.wpi.first.hal.SimDouble;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -13,6 +14,7 @@ import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
+import edu.wpi.first.wpilibj.simulation.SimDeviceSim;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.util.Elastic;
@@ -37,7 +39,9 @@ public class Robot extends LoggedRobot {
 
   // Gyro definition
   private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro();
-
+  private SimDeviceSim m_simulatedGyro;
+  private SimDouble m_simulatedGyroAngle;
+  
   // For notifications
   private String lastGripperState = "Stopped";
 
@@ -72,7 +76,10 @@ public class Robot extends LoggedRobot {
     // Initialize simulation visualization
     SmartDashboard.putData("Field", m_field);
     SendableRegistry.addChild(m_newtonGripper, "NewtonGripper");
-
+    if (isSimulation()) {
+      m_simulatedGyro = new SimDeviceSim("Gyro:ADXRS450");
+      m_simulatedGyroAngle = m_simulatedGyro.getDouble("Angle");
+    }
     // Initialize NetworkTables for AdvantageScope
     m_advantageScopeTable = NetworkTableInstance.getDefault().getTable("AdvantageScope");
     m_poseEntry = m_advantageScopeTable.getEntry("Pose3d");
@@ -277,8 +284,15 @@ public class Robot extends LoggedRobot {
     SmartDashboard.putString("Pose", m_pose.toString());
     SmartDashboard.putString("Velocity", m_velocity.toString());
     SmartDashboard.putString("Rotation", m_rotation.toString());
-  }
 
+    // Update simulated gyro
+    if (m_simulatedGyroAngle != null) {
+      double currentAngle = m_simulatedGyroAngle.get();
+      double deltaTime = 0.02; // 20ms periodic update
+      double newAngle = currentAngle + m_rotation.getZ() * deltaTime * (180 / Math.PI); // Convert radians/s to degrees/s
+      m_simulatedGyroAngle.set(newAngle);
+    }
+  }
   @Override
   public void autonomousInit() {
     // Autonomous initialization code here
