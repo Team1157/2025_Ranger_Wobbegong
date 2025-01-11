@@ -51,6 +51,10 @@ public class Robot extends LoggedRobot {
   private NetworkTable m_advantageScopeTable;
   private NetworkTableEntry m_poseEntry;
 
+  // Toggle for pool-relative control
+  private boolean m_poolRelative = false;
+  private NetworkTableEntry m_poolRelativeToggle;
+
   public Robot() {
     // Set up thrusters in the SendableRegistry for debugging
     SendableRegistry.addChild(m_leftFront45, "LeftFront45");
@@ -81,26 +85,47 @@ public class Robot extends LoggedRobot {
         .withTitle("Gyro Calibration")
         .withDescription("Gyro calibrating on startup.")
         .withDisplaySeconds(5.0));
+
+    // Add pool-relative toggle to Shuffleboard
+    m_poolRelativeToggle = SmartDashboard.getEntry("PoolRelative");
+    m_poolRelativeToggle.setBoolean(m_poolRelative);
   }
 
   @Override
   public void teleopPeriodic() {
+    // Get the current toggle state from Shuffleboard
+    m_poolRelative = m_poolRelativeToggle.getBoolean(false);
+
     // Get input values from the controller and apply deadbands
-    double x = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
-    double y = applyDeadband(-m_controller.getRightX(), 0.1); // Left/right (±y)
-    double z = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
-    double rotate = applyDeadband(-m_controller.getLeftX(), 0.1); // Rotation
+    double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
+    double strafe = applyDeadband(m_controller.getLeftX(), 0.1);    // Left/right (±y)
+    double vertical = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
 
-    // Set power to thrusters
-    m_leftFrontForward.set(x);
-    m_leftRearForward.set(x);
-    m_rightFrontForward.set(x);
-    m_rightRearForward.set(x);
+    double poolX = forward;
+    double poolY = strafe;
 
-    m_leftFront45.set(y + rotate);
-    m_leftRear45.set(-y + rotate);
-    m_rightFront45.set(y - rotate);
-    m_rightRear45.set(-y - rotate);
+    if (m_poolRelative) {
+      // Get gyro angle and convert robot-relative to pool-relative motion
+      double gyroAngle = Math.toRadians(m_gyro.getAngle());
+      double cosAngle = Math.cos(gyroAngle);
+      double sinAngle = Math.sin(gyroAngle);
+
+      // Convert to pool-relative directions
+      poolX = forward * cosAngle - strafe * sinAngle;
+      poolY = forward * sinAngle + strafe * cosAngle;
+    }
+
+    // Set power to thrusters for 2D movement
+    m_leftFront45.set(poolY + poolX);
+    m_leftRear45.set(-poolY + poolX);
+    m_rightFront45.set(poolY - poolX);
+    m_rightRear45.set(-poolY - poolX);
+
+    // Control vertical movement
+    m_leftFrontForward.set(vertical);
+    m_leftRearForward.set(vertical);
+    m_rightFrontForward.set(vertical);
+    m_rightRearForward.set(vertical);
 
     // Control the Newton gripper
     Elastic.Notification notification = new Elastic.Notification();
@@ -149,7 +174,7 @@ public class Robot extends LoggedRobot {
     }
 
     // Update simulation
-    updateSimulation(x, y, z, rotate);
+    updateSimulation(poolX, poolY, vertical, 0.0, 0.0);
   }
 
   /**
@@ -174,8 +199,9 @@ public class Robot extends LoggedRobot {
    * @param y      Left/right input
    * @param z      Up/down input
    * @param rotate Rotation input
+   * @param pitch  Pitch control input
    */
-  private void updateSimulation(double x, double y, double z, double rotate) {
+  private void updateSimulation(double x, double y, double z, double rotate, double pitch) {
     // Time step (assuming teleopPeriodic is called every 20ms)
     double deltaTime = 0.02;
 
@@ -189,6 +215,7 @@ public class Robot extends LoggedRobot {
 
     // Calculate rotational force (yaw is unaffected by the translation forces)
     double rotationalForce = rotate;
+    double pitchForce = pitch;
 
     // Apply water resistance (drag force reduces velocity)
     Translation3d dragForce = new Translation3d(
@@ -207,7 +234,7 @@ public class Robot extends LoggedRobot {
 
     // Update rotation rates with applied forces and drag
     m_rotation = new Rotation3d(
-      m_rotation.getX(),
+      m_rotation.getX() + pitchForce * deltaTime,
       m_rotation.getY(),
       m_rotation.getZ() + (rotationalForce + rotationalDragForce) * deltaTime
     );
