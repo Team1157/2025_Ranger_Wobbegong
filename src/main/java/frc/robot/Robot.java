@@ -105,7 +105,7 @@ public void teleopPeriodic() {
 
     // Get input values from the controller and apply deadbands
     double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
-    double strafe = applyDeadband(m_controller.getLeftX(), 0.1);   // Left/right (±y)
+    double strafe = applyDeadband(-m_controller.getLeftX(), 0.1);   // Left/right (±y)
     double pitch = applyDeadband(m_controller.getRightY(), 0.1);   // Pitch control (±pitch)
     double roll = applyDeadband(m_controller.getRightX(), 0.1);    // Roll control (±roll)
 
@@ -117,10 +117,10 @@ public void teleopPeriodic() {
     // Yaw control using bumpers
     double yaw = 0.0;
     if (m_controller.getLeftBumper()) {
-        yaw -= 0.5; // Adjust yaw left (negative value)
+        yaw += 0.5; // Adjust yaw left (positive  value)
     }
     if (m_controller.getRightBumper()) {
-        yaw += 0.5; // Adjust yaw right (positive value)
+        yaw -= 0.5; // Adjust yaw right (negative value)
     }
 
     double poolX = forward;
