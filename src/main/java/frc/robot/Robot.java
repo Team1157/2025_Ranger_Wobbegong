@@ -99,95 +99,97 @@ public class Robot extends LoggedRobot {
   }
 
   @Override
-  public void teleopPeriodic() {
-      // Get the current toggle state from Shuffleboard
-      m_poolRelative = m_poolRelativeToggle.getBoolean(false);
-  
-      // Get input values from the controller and apply deadbands
-      double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
-      double strafe = applyDeadband(m_controller.getLeftX(), 0.1);    // Left/right (±y)
-      double pitch = applyDeadband(m_controller.getRightY(), 0.1);    // Pitch control (±pitch)
-  
-      // Adjust vertical using right and left triggers
-      double rightTrigger = m_controller.getRightTriggerAxis(); // Upward movement
-      double leftTrigger = m_controller.getLeftTriggerAxis();   // Downward movement
-      double vertical = applyDeadband(rightTrigger - leftTrigger, 0.1); // Combine triggers
-  
-      double poolX = forward;
-      double poolY = strafe;
-  
-      if (m_poolRelative) {
-          // Get gyro angle and convert robot-relative to pool-relative motion
-          double gyroAngle = Math.toRadians(m_gyro.getAngle());
-          double cosAngle = Math.cos(gyroAngle);
-          double sinAngle = Math.sin(gyroAngle);
-  
-          // Convert to pool-relative directions
-          poolX = forward * cosAngle - strafe * sinAngle;
-          poolY = forward * sinAngle + strafe * cosAngle;
-      }
-  
-      // Set power to thrusters for 2D movement
-      m_leftFront45.set(poolY + poolX);
-      m_leftRear45.set(-poolY + poolX);
-      m_rightFront45.set(poolY - poolX);
-      m_rightRear45.set(-poolY - poolX);
-  
-      // Control vertical movement and pitch
-      m_leftFrontForward.set(vertical + pitch);
-      m_leftRearForward.set(vertical - pitch);
-      m_rightFrontForward.set(vertical + pitch);
-      m_rightRearForward.set(vertical - pitch);
-  
-      // Control the Newton gripper
-      Elastic.Notification notification = new Elastic.Notification();
-  
-      String currentGripperState = "Stopped";
-      if (m_controller.getAButton()) {
-          // Open the gripper
-          m_newtonGripper.set(1.0); // Full forward power
-          currentGripperState = "Opening";
-      } else if (m_controller.getBButton()) {
-          // Close the gripper
-          m_newtonGripper.set(-1.0); // Full reverse power
-          currentGripperState = "Closing";
-      } else {
-          // Stop the gripper
-          m_newtonGripper.set(0.0);
-      }
-  
-      // Notification logic for Newton gripper
-      if (!currentGripperState.equals(lastGripperState)) {
-          Elastic.sendNotification(notification
-              .withLevel(Elastic.Notification.NotificationLevel.INFO)
-              .withTitle("Gripper " + currentGripperState)
-              .withDescription("Power set to: " + m_newtonGripper.getVoltage())
-              .withDisplaySeconds(5.0));
-          lastGripperState = currentGripperState;
-      }
-  
-      // Gyro control and notifications
-      if (m_controller.getXButtonPressed()) {
-          m_gyro.calibrate();
-          Elastic.sendNotification(new Elastic.Notification()
-              .withLevel(Elastic.Notification.NotificationLevel.WARNING)
-              .withTitle("Gyro Calibration")
-              .withDescription("Gyro calibrating as requested.")
-              .withDisplaySeconds(5.0));
-      }
-  
-      if (m_controller.getYButtonPressed()) {
-          m_gyro.reset();
-          Elastic.sendNotification(new Elastic.Notification()
-              .withLevel(Elastic.Notification.NotificationLevel.INFO)
-              .withTitle("Gyro Reset")
-              .withDescription("Gyro heading reset to zero.")
-              .withDisplaySeconds(5.0));
-      }
-  
-      // Update simulation with pitch control
-      updateSimulation(poolX, poolY, vertical, 0.0, pitch);
-  }
+public void teleopPeriodic() {
+    // Get the current toggle state from Shuffleboard
+    m_poolRelative = m_poolRelativeToggle.getBoolean(false);
+
+    // Get input values from the controller and apply deadbands
+    double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
+    double strafe = applyDeadband(m_controller.getLeftX(), 0.1);   // Left/right (±y)
+    double pitch = applyDeadband(m_controller.getRightY(), 0.1);   // Pitch control (±pitch)
+    double roll = applyDeadband(m_controller.getRightX(), 0.1);    // Roll control (±roll)
+
+    // Adjust vertical using right and left triggers
+    double rightTrigger = m_controller.getRightTriggerAxis(); // Upward movement
+    double leftTrigger = m_controller.getLeftTriggerAxis();   // Downward movement
+    double vertical = applyDeadband(rightTrigger - leftTrigger, 0.1); // Combine triggers
+
+    double poolX = forward;
+    double poolY = strafe;
+
+    if (m_poolRelative) {
+        // Get gyro angle and convert robot-relative to pool-relative motion
+        double gyroAngle = Math.toRadians(m_gyro.getAngle());
+        double cosAngle = Math.cos(gyroAngle);
+        double sinAngle = Math.sin(gyroAngle);
+
+        // Convert to pool-relative directions
+        poolX = forward * cosAngle - strafe * sinAngle;
+        poolY = forward * sinAngle + strafe * cosAngle;
+    }
+
+    // Set power to thrusters for 2D movement
+    m_leftFront45.set(poolY + poolX);
+    m_leftRear45.set(-poolY + poolX);
+    m_rightFront45.set(poolY - poolX);
+    m_rightRear45.set(-poolY - poolX);
+
+    // Control vertical movement, pitch, and roll
+    m_leftFrontForward.set(vertical + pitch + roll);
+    m_leftRearForward.set(vertical - pitch - roll);
+    m_rightFrontForward.set(vertical + pitch - roll);
+    m_rightRearForward.set(vertical - pitch + roll);
+
+    // Control the Newton gripper
+    Elastic.Notification notification = new Elastic.Notification();
+
+    String currentGripperState = "Stopped";
+    if (m_controller.getAButton()) {
+        // Open the gripper
+        m_newtonGripper.set(1.0); // Full forward power
+        currentGripperState = "Opening";
+    } else if (m_controller.getBButton()) {
+        // Close the gripper
+        m_newtonGripper.set(-1.0); // Full reverse power
+        currentGripperState = "Closing";
+    } else {
+        // Stop the gripper
+        m_newtonGripper.set(0.0);
+    }
+
+    // Notification logic for Newton gripper
+    if (!currentGripperState.equals(lastGripperState)) {
+        Elastic.sendNotification(notification
+            .withLevel(Elastic.Notification.NotificationLevel.INFO)
+            .withTitle("Gripper " + currentGripperState)
+            .withDescription("Power set to: " + m_newtonGripper.getVoltage())
+            .withDisplaySeconds(5.0));
+        lastGripperState = currentGripperState;
+    }
+
+    // Gyro control and notifications
+    if (m_controller.getXButtonPressed()) {
+        m_gyro.calibrate();
+        Elastic.sendNotification(new Elastic.Notification()
+            .withLevel(Elastic.Notification.NotificationLevel.WARNING)
+            .withTitle("Gyro Calibration")
+            .withDescription("Gyro calibrating as requested.")
+            .withDisplaySeconds(5.0));
+    }
+
+    if (m_controller.getYButtonPressed()) {
+        m_gyro.reset();
+        Elastic.sendNotification(new Elastic.Notification()
+            .withLevel(Elastic.Notification.NotificationLevel.INFO)
+            .withTitle("Gyro Reset")
+            .withDescription("Gyro heading reset to zero.")
+            .withDisplaySeconds(5.0));
+    }
+
+    // Update simulation with pitch and roll control
+    updateSimulation(poolX, poolY, vertical, 0.0, pitch);
+}
+
   
   
 
