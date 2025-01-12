@@ -38,6 +38,20 @@
 - **X Button**: Calibrate Gyro.
 - **Y Button**: Reset Gyro.
 
+## Thruster Assignments
+
+| PWM Port | Component              | Description                     |
+|----------|------------------------|---------------------------------|
+| 0        | `m_leftFront45`        | Left front 45-degree thruster   |
+| 1        | `m_leftRear45`         | Left rear 45-degree thruster    |
+| 2        | `m_rightFront45`       | Right front 45-degree thruster  |
+| 3        | `m_rightRear45`        | Right rear 45-degree thruster   |
+| 4        | `m_leftFrontForward`   | Left front vertical thruster    |
+| 5        | `m_leftRearForward`    | Left rear vertical thruster     |
+| 6        | `m_rightFrontForward`  | Right front vertical thruster   |
+| 7        | `m_rightRearForward`   | Right rear vertical thruster    |
+| 9        | `m_newtonGripper`      | Newton gripper motor            |
+
 ## Troubleshooting
 
 1. **Robot is not responding to controller inputs**:
