@@ -114,6 +114,15 @@ public void teleopPeriodic() {
     double leftTrigger = m_controller.getLeftTriggerAxis();   // Downward movement
     double vertical = applyDeadband(rightTrigger - leftTrigger, 0.1); // Combine triggers
 
+    // Yaw control using bumpers
+    double yaw = 0.0;
+    if (m_controller.getLeftBumper()) {
+        yaw -= 0.5; // Adjust yaw left (negative value)
+    }
+    if (m_controller.getRightBumper()) {
+        yaw += 0.5; // Adjust yaw right (positive value)
+    }
+
     double poolX = forward;
     double poolY = strafe;
 
@@ -134,11 +143,11 @@ public void teleopPeriodic() {
     m_rightFront45.set(poolY - poolX);
     m_rightRear45.set(-poolY - poolX);
 
-    // Control vertical movement, pitch, and roll
-    m_leftFrontForward.set(vertical + pitch + roll);
-    m_leftRearForward.set(vertical - pitch - roll);
-    m_rightFrontForward.set(vertical + pitch - roll);
-    m_rightRearForward.set(vertical - pitch + roll);
+    // Control vertical movement, pitch, roll, and yaw
+    m_leftFrontForward.set(vertical + pitch + roll + yaw);
+    m_leftRearForward.set(vertical - pitch - roll + yaw);
+    m_rightFrontForward.set(vertical + pitch - roll - yaw);
+    m_rightRearForward.set(vertical - pitch + roll - yaw);
 
     // Control the Newton gripper
     Elastic.Notification notification = new Elastic.Notification();
@@ -186,8 +195,8 @@ public void teleopPeriodic() {
             .withDisplaySeconds(5.0));
     }
 
-    // Update simulation with pitch and roll control
-    updateSimulation(poolX, poolY, vertical, 0.0, pitch);
+    // Update simulation with pitch, roll, and yaw control
+    updateSimulation(poolX, poolY, vertical, yaw, pitch);
 }
 
   
