@@ -99,7 +99,7 @@ public class Robot extends LoggedRobot {
   }
 
   @Override
-  public void teleopPeriodic() {
+public void teleopPeriodic() {
     // Get the current toggle state from Shuffleboard
     m_poolRelative = m_poolRelativeToggle.getBoolean(false);
 
@@ -107,19 +107,20 @@ public class Robot extends LoggedRobot {
     double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward (±x)
     double strafe = applyDeadband(m_controller.getLeftX(), 0.1);    // Left/right (±y)
     double vertical = applyDeadband(-m_controller.getRightY(), 0.1); // Up/down (±z)
+    double pitch = applyDeadband(m_controller.getRightX(), 0.1);    // Pitch control (±pitch)
 
     double poolX = forward;
     double poolY = strafe;
 
     if (m_poolRelative) {
-      // Get gyro angle and convert robot-relative to pool-relative motion
-      double gyroAngle = Math.toRadians(m_gyro.getAngle());
-      double cosAngle = Math.cos(gyroAngle);
-      double sinAngle = Math.sin(gyroAngle);
+        // Get gyro angle and convert robot-relative to pool-relative motion
+        double gyroAngle = Math.toRadians(m_gyro.getAngle());
+        double cosAngle = Math.cos(gyroAngle);
+        double sinAngle = Math.sin(gyroAngle);
 
-      // Convert to pool-relative directions
-      poolX = forward * cosAngle - strafe * sinAngle;
-      poolY = forward * sinAngle + strafe * cosAngle;
+        // Convert to pool-relative directions
+        poolX = forward * cosAngle - strafe * sinAngle;
+        poolY = forward * sinAngle + strafe * cosAngle;
     }
 
     // Set power to thrusters for 2D movement
@@ -129,60 +130,62 @@ public class Robot extends LoggedRobot {
     m_rightRear45.set(-poolY - poolX);
 
     // Control vertical movement
-    m_leftFrontForward.set(vertical);
-    m_leftRearForward.set(vertical);
-    m_rightFrontForward.set(vertical);
-    m_rightRearForward.set(vertical);
+    m_leftFrontForward.set(vertical + pitch);
+    m_leftRearForward.set(vertical - pitch);
+    m_rightFrontForward.set(vertical + pitch);
+    m_rightRearForward.set(vertical - pitch);
 
     // Control the Newton gripper
     Elastic.Notification notification = new Elastic.Notification();
 
     String currentGripperState = "Stopped";
     if (m_controller.getAButton()) {
-      // Open the gripper
-      m_newtonGripper.set(1.0); // Full forward power
-      currentGripperState = "Opening";
+        // Open the gripper
+        m_newtonGripper.set(1.0); // Full forward power
+        currentGripperState = "Opening";
     } else if (m_controller.getBButton()) {
-      // Close the gripper
-      m_newtonGripper.set(-1.0); // Full reverse power
-      currentGripperState = "Closing";
+        // Close the gripper
+        m_newtonGripper.set(-1.0); // Full reverse power
+        currentGripperState = "Closing";
     } else {
-      // Stop the gripper
-      m_newtonGripper.set(0.0);
+        // Stop the gripper
+        m_newtonGripper.set(0.0);
     }
 
     // Notification logic for Newton gripper
     if (!currentGripperState.equals(lastGripperState)) {
-      Elastic.sendNotification(notification
-          .withLevel(Elastic.Notification.NotificationLevel.INFO)
-          .withTitle("Gripper " + currentGripperState)
-          .withDescription("Power set to: " + m_newtonGripper.getVoltage())
-          .withDisplaySeconds(5.0));
-      lastGripperState = currentGripperState;
+        Elastic.sendNotification(notification
+            .withLevel(Elastic.Notification.NotificationLevel.INFO)
+            .withTitle("Gripper " + currentGripperState)
+            .withDescription("Power set to: " + m_newtonGripper.getVoltage())
+            .withDisplaySeconds(5.0));
+        lastGripperState = currentGripperState;
     }
 
     // Gyro control and notifications
     if (m_controller.getXButtonPressed()) {
-      m_gyro.calibrate();
-      Elastic.sendNotification(new Elastic.Notification()
-          .withLevel(Elastic.Notification.NotificationLevel.WARNING)
-          .withTitle("Gyro Calibration")
-          .withDescription("Gyro calibrating as requested.")
-          .withDisplaySeconds(5.0));
+        m_gyro.calibrate();
+        Elastic.sendNotification(new Elastic.Notification()
+            .withLevel(Elastic.Notification.NotificationLevel.WARNING)
+            .withTitle("Gyro Calibration")
+            .withDescription("Gyro calibrating as requested.")
+            .withDisplaySeconds(5.0));
     }
 
     if (m_controller.getYButtonPressed()) {
-      m_gyro.reset();
-      Elastic.sendNotification(new Elastic.Notification()
-          .withLevel(Elastic.Notification.NotificationLevel.INFO)
-          .withTitle("Gyro Reset")
-          .withDescription("Gyro heading reset to zero.")
-          .withDisplaySeconds(5.0));
+        m_gyro.reset();
+        Elastic.sendNotification(new Elastic.Notification()
+            .withLevel(Elastic.Notification.NotificationLevel.INFO)
+            .withTitle("Gyro Reset")
+            .withDescription("Gyro heading reset to zero.")
+            .withDisplaySeconds(5.0));
     }
 
-    // Update simulation
-    updateSimulation(poolX, poolY, vertical, 0.0, 0.0);
-  }
+    // Update simulation with pitch control
+    updateSimulation(poolX, poolY, vertical, 0.0, pitch);
+}
+
+  
 
   /**
    * Applies a deadband to the joystick input to filter out small, unintended movements.
