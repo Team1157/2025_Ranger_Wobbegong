@@ -1,4 +1,4 @@
-// Copyright (c) Ada Tessar
+// Copyright (c) Ada Tessar (me@adabit.org)
 package frc.robot;
 
 import org.littletonrobotics.junction.LoggedRobot;
@@ -12,6 +12,7 @@ import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.simulation.SimDeviceSim;
@@ -41,7 +42,10 @@ public class Robot extends LoggedRobot {
   private final ADXRS450_Gyro m_gyro = new ADXRS450_Gyro();
   private SimDeviceSim m_simulatedGyro;
   private SimDouble m_simulatedGyroAngle;
-  
+
+  // Timer for gripper control
+  private final Timer gripperTimer = new Timer();
+
   // For notifications
   private String lastGripperState = "Stopped";
 
@@ -96,10 +100,17 @@ public class Robot extends LoggedRobot {
     // Add pool-relative toggle to Shuffleboard
     m_poolRelativeToggle = SmartDashboard.getEntry("PoolRelative");
     m_poolRelativeToggle.setBoolean(m_poolRelative);
+
+    // Initialize the gripper status field in SmartDashboard
+    SmartDashboard.putString("Gripper Status", lastGripperState);
+
+    // Start the gripper timer
+    gripperTimer.reset();
+    gripperTimer.start();
   }
 
   @Override
-public void teleopPeriodic() {
+  public void teleopPeriodic() {
     // Get the current toggle state from Shuffleboard
     m_poolRelative = m_poolRelativeToggle.getBoolean(false);
 
@@ -117,7 +128,7 @@ public void teleopPeriodic() {
     // Yaw control using bumpers
     double yaw = 0.0;
     if (m_controller.getLeftBumper()) {
-        yaw += 0.5; // Adjust yaw left (positive  value)
+        yaw += 0.5; // Adjust yaw left (positive value)
     }
     if (m_controller.getRightBumper()) {
         yaw -= 0.5; // Adjust yaw right (negative value)
@@ -154,16 +165,25 @@ public void teleopPeriodic() {
 
     String currentGripperState = "Stopped";
     if (m_controller.getAButton()) {
-        // Open the gripper
-        m_newtonGripper.set(1.0); // Full forward power
-        currentGripperState = "Opening";
+        // Open the gripper for 4 seconds
+        if (gripperTimer.get() >= 4.0) {
+            m_newtonGripper.set(0.0);
+        } else {
+            m_newtonGripper.set(1.0); // Full forward power
+            currentGripperState = "Opening";
+        }
     } else if (m_controller.getBButton()) {
-        // Close the gripper
-        m_newtonGripper.set(-1.0); // Full reverse power
-        currentGripperState = "Closing";
+        // Close the gripper for 4 seconds
+        if (gripperTimer.get() >= 4.0) {
+            m_newtonGripper.set(0.0);
+        } else {
+            m_newtonGripper.set(-1.0); // Full reverse power
+            currentGripperState = "Closing";
+        }
     } else {
         // Stop the gripper
         m_newtonGripper.set(0.0);
+        gripperTimer.reset();
     }
 
     // Notification logic for Newton gripper
@@ -174,6 +194,9 @@ public void teleopPeriodic() {
             .withDescription("Power set to: " + m_newtonGripper.getVoltage())
             .withDisplaySeconds(5.0));
         lastGripperState = currentGripperState;
+
+        // Update the gripper status on SmartDashboard
+        SmartDashboard.putString("Gripper Status", currentGripperState);
     }
 
     // Gyro control and notifications
@@ -197,10 +220,7 @@ public void teleopPeriodic() {
 
     // Update simulation with pitch, roll, and yaw control
     updateSimulation(poolX, poolY, vertical, yaw, pitch);
-}
-
-  
-  
+  }
 
   /**
    * Applies a deadband to the joystick input to filter out small, unintended movements.
