@@ -14,7 +14,7 @@ import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
+import frc.robot.util.BlueRoboticsBasicESC;
 import edu.wpi.first.wpilibj.simulation.SimDeviceSim;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -27,15 +27,15 @@ import frc.robot.util.Elastic;
 public class Robot extends LoggedRobot {
 
   // Thruster definitions
-  private final PWMSparkMax m_leftFront45 = new PWMSparkMax(0);
-  private final PWMSparkMax m_leftRear45 = new PWMSparkMax(1);
-  private final PWMSparkMax m_rightFront45 = new PWMSparkMax(2);
-  private final PWMSparkMax m_rightRear45 = new PWMSparkMax(3);
-  private final PWMSparkMax m_leftFrontForward = new PWMSparkMax(4);
-  private final PWMSparkMax m_leftRearForward = new PWMSparkMax(5);
-  private final PWMSparkMax m_rightFrontForward = new PWMSparkMax(6);
-  private final PWMSparkMax m_rightRearForward = new PWMSparkMax(7);
-  private final PWMSparkMax m_newtonGripper = new PWMSparkMax(9);
+  private final BlueRoboticsBasicESC m_leftFront45 = new BlueRoboticsBasicESC(0);
+  private final BlueRoboticsBasicESC m_leftRear45 = new BlueRoboticsBasicESC(1);
+  private final BlueRoboticsBasicESC m_rightFront45 = new BlueRoboticsBasicESC(2);
+  private final BlueRoboticsBasicESC m_rightRear45 = new BlueRoboticsBasicESC(3);
+  private final BlueRoboticsBasicESC m_leftFrontForward = new BlueRoboticsBasicESC(4);
+  private final BlueRoboticsBasicESC m_leftRearForward = new BlueRoboticsBasicESC(5);
+  private final BlueRoboticsBasicESC m_rightFrontForward = new BlueRoboticsBasicESC(6);
+  private final BlueRoboticsBasicESC m_rightRearForward = new BlueRoboticsBasicESC(7);
+  private final BlueRoboticsBasicESC m_newtonGripper = new BlueRoboticsBasicESC(9);
   private final XboxController m_controller = new XboxController(0);
 
   // Gyro definition
