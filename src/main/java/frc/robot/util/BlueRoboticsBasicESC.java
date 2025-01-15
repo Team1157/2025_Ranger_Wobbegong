@@ -14,7 +14,7 @@ public class BlueRoboticsBasicESC extends PWMMotorController{
   public BlueRoboticsBasicESC(final int channel) {
     super("BlueRoboticsBasicESC", channel);
 
-    m_pwm.setBoundsMicroseconds(2003, 1550, 1500, 1460, 999);
+    m_pwm.setBoundsMicroseconds(1900, 1550, 1500, 1460, 1100);
     m_pwm.setPeriodMultiplier(PWM.PeriodMultiplier.k1X);
     m_pwm.setSpeed(0.0);
     m_pwm.setZeroLatch();
