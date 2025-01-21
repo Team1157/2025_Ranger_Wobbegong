@@ -67,6 +67,26 @@
    - Drag the robot pose from the field2d, not the pose3d into the field in the bottom
    - right click on it in the bottom field and make sure rotation is in degrees, not radians
 
+## Degrees of Freedom Implementation
+
+1. **Forward/Backward (Translation on X-axis)**:
+   - Controlled by adjusting the power of the 45-degree thrusters (`m_leftFront45`, `m_rightFront45`, `m_leftRear45`, `m_rightRear45`) in unison. Positive values move the robot forward, while negative values move it backward.
+
+2. **Strafe Left/Right (Translation on Y-axis)**:
+   - Achieved by counter-balancing the 45-degree thrusters to generate lateral movement. For example, increasing the left-side thrusters' power while decreasing the right-side thrusters enables strafing.
+
+3. **Up/Down (Translation on Z-axis)**:
+   - Managed by the vertical thrusters (`m_leftFrontForward`, `m_rightFrontForward`, `m_leftRearForward`, `m_rightRearForward`). Increasing thrust moves the robot up, while decreasing thrust moves it down.
+
+4. **Yaw (Rotation about Z-axis)**:
+   - Controlled by applying opposite power to diagonal pairs of 45-degree thrusters (e.g., `m_leftFront45` and `m_rightRear45` vs. `m_rightFront45` and `m_leftRear45`) to rotate left or right.
+
+5. **Pitch (Rotation about X-axis)**:
+   - Adjusted using the vertical thrusters at the front (`m_leftFrontForward`, `m_rightFrontForward`) and rear (`m_leftRearForward`, `m_rightRearForward`). Increasing front thrust while decreasing rear thrust tilts the robot forward, and vice versa.
+
+6. **Roll (Rotation about Y-axis)**:
+   - Achieved by manipulating the left and right vertical thrusters. For example, increasing power on the left-side vertical thrusters and decreasing it on the right-side ones causes the robot to roll clockwise.
+
 ## Contributing
 To contribute:
 
