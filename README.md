@@ -25,18 +25,18 @@
 
 ## Controller Mapping
 
-- **Left Stick (Y-axis)**: Forward/Backward movement.
-- **Left Stick (X-axis)**: Strafe Left/Right movement.
-- **Right Stick (Y-axis)**: Pitch control.
-- **Right Stick (X-axis)**: Roll control.
-- **Left Bumper**: Rotate left (yaw).
-- **Right Bumper**: Rotate right (yaw).
-- **Left Trigger**: Move downwards.
-- **Right Trigger**: Move upwards.
-- **A Button**: Open Newton Gripper.
-- **B Button**: Close Newton Gripper.
-- **X Button**: Calibrate Gyro.
-- **Y Button**: Reset Gyro.
+- **Left Stick (Y-axis)**: Forward/Backward movement.  
+- **Left Stick (X-axis)**: Strafe Left/Right movement.  
+- **Right Stick (Y-axis)**: Elevation control (up/down).  
+- **Right Stick (X-axis)**: Yaw control (rotation around Z-axis).  
+- **Right Bumper**: Increase Pitch (tilt up).  
+- **Left Bumper**: Decrease Pitch (tilt down).  
+- **Left Trigger**: Roll left (rotation around X-axis).  
+- **Right Trigger**: Roll right (rotation around X-axis).  
+- **A Button**: Open Newton Gripper.  
+- **B Button**: Close Newton Gripper.  
+- **X Button**: Calibrate Gyro.  
+- **Y Button**: Reset Gyro.  
 
 ## Thruster Assignments
 
@@ -96,5 +96,5 @@ To contribute:
 4. Submit a pull request with a detailed description of your changes.
 5. I'll merge it into the main branch if everything is okay and it'll become a part of our robot!
 
-Feel free to open issues for questions. Thank you :3
+Feel free to open issues or just talk to me (ada) for questions. Thank you :3
 

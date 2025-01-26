@@ -115,18 +115,19 @@ public class Robot extends LoggedRobot {
       // Read controller inputs with deadband applied
       double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward
       double strafe = applyDeadband(-m_controller.getLeftX(), 0.1);  // Left/right
-      double vertical = applyDeadband(m_controller.getRightTriggerAxis() - m_controller.getLeftTriggerAxis(), 0.1); // Up/down
+      double vertical = applyDeadband(m_controller.getRightY() - m_controller.getLeftY(), 0.1); // Up/down
       double yaw = applyDeadband(m_controller.getRightX(), 0.1);     // Yaw rotation
-      double roll = (m_controller.getLeftBumper() ? 0.5 : 0.0) - (m_controller.getRightBumper() ? 0.5 : 0.0); // Roll control
-      // Yaw control using bumpers
-      double pitch = 0.0;
-      if (m_controller.getLeftBumper()) {
-          yaw += 0.5; // Adjust pitch left (positive value)
-      }
-      if (m_controller.getRightBumper()) {
-          yaw -= 0.5; // Adjust pitch right (negative value)
-      }
+      double roll = (m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis()); // Analog roll control
       
+      // Pitch control using bumpers
+      double pitch = 0.0;
+      if (m_controller.getRightBumperButton()) {
+          pitch += 0.5; // Adjust pitch forward (positive value)
+      }
+      if (m_controller.getLeftBumperButton()) {
+          pitch -= 0.5; // Adjust pitch backward (negative value)
+      }
+  
       // Field-relative transformation
       double poolX = forward;
       double poolY = strafe;
@@ -163,71 +164,71 @@ public class Robot extends LoggedRobot {
       m_rightRear45.set(-poolY - poolX);
   
       // Vertical, pitch, roll, and yaw control
-      m_leftFrontForward.set(poolZ + roll + yaw);
-      m_leftRearForward.set(poolZ - roll + yaw);
-      m_rightFrontForward.set(poolZ + roll - yaw);
-      m_rightRearForward.set(poolZ - roll - yaw);
+      m_leftFrontForward.set(poolZ + roll + yaw + pitch);  // Add pitch adjustment
+      m_leftRearForward.set(poolZ - roll + yaw - pitch);   // Subtract pitch adjustment
+      m_rightFrontForward.set(poolZ + roll - yaw + pitch); // Add pitch adjustment
+      m_rightRearForward.set(poolZ - roll - yaw - pitch);  // Subtract pitch adjustment
   
-    // Control the Newton gripper
-    Elastic.Notification notification = new Elastic.Notification();
-
-    String currentGripperState = "Stopped";
-    if (m_controller.getAButton()) {
-        // Open the gripper for 4 seconds
-        if (gripperTimer.get() >= 4.0) {
-            m_newtonGripper.set(0.0);
-        } else {
-            m_newtonGripper.set(1.0); // Full forward power
-            currentGripperState = "Opening";
-        }
-    } else if (m_controller.getBButton()) {
-        // Close the gripper for 4 seconds
-        if (gripperTimer.get() >= 4.0) {
-            m_newtonGripper.set(0.0);
-        } else {
-            m_newtonGripper.set(-1.0); // Full reverse power
-            currentGripperState = "Closing";
-        }
-    } else {
-        // Stop the gripper
-        m_newtonGripper.set(0.0);
-        gripperTimer.reset();
-    }
-
-    // Notification logic for Newton gripper
-    if (!currentGripperState.equals(lastGripperState)) {
-        Elastic.sendNotification(notification
-            .withLevel(Elastic.Notification.NotificationLevel.INFO)
-            .withTitle("Gripper " + currentGripperState)
-            .withDescription("Power set to: " + m_newtonGripper.getVoltage())
-            .withDisplaySeconds(5.0));
-        lastGripperState = currentGripperState;
-
-        // Update the gripper status on SmartDashboard
-        SmartDashboard.putString("Gripper Status", currentGripperState);
-    }
-
-    // Gyro control and notifications
-    if (m_controller.getXButtonPressed()) {
-        m_imu.calibrate();
-        Elastic.sendNotification(new Elastic.Notification()
-            .withLevel(Elastic.Notification.NotificationLevel.WARNING)
-            .withTitle("Gyro Calibration")
-            .withDescription("Gyro calibrating as requested.")
-            .withDisplaySeconds(5.0));
-    }
-
-    if (m_controller.getYButtonPressed()) {
-        m_imu.reset();
-        Elastic.sendNotification(new Elastic.Notification()
-            .withLevel(Elastic.Notification.NotificationLevel.INFO)
-            .withTitle("Gyro Reset")
-            .withDescription("Gyro heading reset to zero.")
-            .withDisplaySeconds(5.0));
-    }
-
-    // Update simulation with pitch, roll, and yaw control
-    updateSimulation(poolX, poolY, vertical, yaw, pitch);
+      // Control the Newton gripper
+      Elastic.Notification notification = new Elastic.Notification();
+  
+      String currentGripperState = "Stopped";
+      if (m_controller.getAButton()) {
+          // Open the gripper for 4 seconds
+          if (gripperTimer.get() >= 4.0) {
+              m_newtonGripper.set(0.0);
+          } else {
+              m_newtonGripper.set(1.0); // Full forward power
+              currentGripperState = "Opening";
+          }
+      } else if (m_controller.getBButton()) {
+          // Close the gripper for 4 seconds
+          if (gripperTimer.get() >= 4.0) {
+              m_newtonGripper.set(0.0);
+          } else {
+              m_newtonGripper.set(-1.0); // Full reverse power
+              currentGripperState = "Closing";
+          }
+      } else {
+          // Stop the gripper
+          m_newtonGripper.set(0.0);
+          gripperTimer.reset();
+      }
+  
+      // Notification logic for Newton gripper
+      if (!currentGripperState.equals(lastGripperState)) {
+          Elastic.sendNotification(notification
+              .withLevel(Elastic.Notification.NotificationLevel.INFO)
+              .withTitle("Gripper " + currentGripperState)
+              .withDescription("Power set to: " + m_newtonGripper.getVoltage())
+              .withDisplaySeconds(5.0));
+          lastGripperState = currentGripperState;
+  
+          // Update the gripper status on SmartDashboard
+          SmartDashboard.putString("Gripper Status", currentGripperState);
+      }
+  
+      // Gyro control and notifications
+      if (m_controller.getXButtonPressed()) {
+          m_imu.calibrate();
+          Elastic.sendNotification(new Elastic.Notification()
+              .withLevel(Elastic.Notification.NotificationLevel.WARNING)
+              .withTitle("Gyro Calibration")
+              .withDescription("Gyro calibrating as requested.")
+              .withDisplaySeconds(5.0));
+      }
+  
+      if (m_controller.getYButtonPressed()) {
+          m_imu.reset();
+          Elastic.sendNotification(new Elastic.Notification()
+              .withLevel(Elastic.Notification.NotificationLevel.INFO)
+              .withTitle("Gyro Reset")
+              .withDescription("Gyro heading reset to zero.")
+              .withDisplaySeconds(5.0));
+      }
+  
+      // Update simulation with pitch, roll, and yaw control
+      updateSimulation(poolX, poolY, vertical, yaw, pitch);
   }
 
   /**
