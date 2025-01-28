@@ -7,9 +7,10 @@ import edu.wpi.first.hal.SimDouble;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.ADIS16448_IMU;
 import edu.wpi.first.wpilibj.Timer;
@@ -39,7 +40,8 @@ public class Robot extends LoggedRobot {
   private final XboxController m_controller = new XboxController(0);
 
   // Gyro definition
-  private final ADIS16448_IMU m_imu = new ADIS16448_IMU();  private SimDeviceSim m_simulatedGyro;
+  private final ADIS16448_IMU m_imu = new ADIS16448_IMU();
+  private SimDeviceSim m_simulatedGyro;
   private SimDouble m_simulatedGyroAngle;
 
   // Timer for gripper control
@@ -54,9 +56,9 @@ public class Robot extends LoggedRobot {
   private Translation3d m_velocity = new Translation3d();
   private Rotation3d m_rotation = new Rotation3d();
 
-  // NetworkTables for AdvantageScope
-  private NetworkTable m_advantageScopeTable;
-  private NetworkTableEntry m_poseEntry;
+  // Publishers for AdvantageScope
+  private StructPublisher < Pose3d > m_posePublisher;
+  private StructArrayPublisher < Pose3d > m_poseArrayPublisher;
 
   // Toggle for pool-relative control
   private boolean m_poolRelative = false;
@@ -83,18 +85,20 @@ public class Robot extends LoggedRobot {
       m_simulatedGyro = new SimDeviceSim("Gyro:ADXRS450");
       m_simulatedGyroAngle = m_simulatedGyro.getDouble("Angle");
     }
-    // Initialize NetworkTables for AdvantageScope
-    m_advantageScopeTable = NetworkTableInstance.getDefault().getTable("AdvantageScope");
-    m_poseEntry = m_advantageScopeTable.getEntry("Pose3d");
-    SmartDashboard.putData("Field", m_field);
+
+    // Initialize AdvantageScope publishers
+    m_posePublisher = NetworkTableInstance.getDefault()
+      .getStructTopic("RobotPose", Pose3d.struct).publish();
+    m_poseArrayPublisher = NetworkTableInstance.getDefault()
+      .getStructArrayTopic("RobotPoseArray", Pose3d.struct).publish();
 
     // Calibrate the gyro on startup
     m_imu.calibrate();
     Elastic.sendNotification(new Elastic.Notification()
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Gyro Calibration")
-        .withDescription("Gyro calibrating on startup.")
-        .withDisplaySeconds(5.0));
+      .withLevel(Elastic.Notification.NotificationLevel.INFO)
+      .withTitle("Gyro Calibration")
+      .withDescription("Gyro calibrating on startup.")
+      .withDisplaySeconds(5.0));
 
     // Add pool-relative toggle to Elastic
     m_poolRelativeToggle = SmartDashboard.getEntry("PoolRelative");
@@ -107,128 +111,132 @@ public class Robot extends LoggedRobot {
     gripperTimer.reset();
     gripperTimer.start();
   }
+
   @Override
   public void teleopPeriodic() {
-      // Get toggle state from Elastic
-      m_poolRelative = m_poolRelativeToggle.getBoolean(false);
-  
-      // Read controller inputs with deadband applied
-      double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward
-      double strafe = applyDeadband(-m_controller.getLeftX(), 0.1);  // Left/right
-      double vertical = applyDeadband(m_controller.getRightY() - m_controller.getLeftY(), 0.1); // Up/down
-      double yaw = applyDeadband(m_controller.getRightX(), 0.1);     // Yaw rotation
-      double roll = (m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis()); // Analog roll control
-      
-      // Pitch control using bumpers
-      double pitch = 0.0;
-      if (m_controller.getRightBumperButton()) {
-          pitch += 0.5; // Adjust pitch forward (positive value)
-      }
-      if (m_controller.getLeftBumperButton()) {
-          pitch -= 0.5; // Adjust pitch backward (negative value)
-      }
-  
-      // Field-relative transformation
-      double poolX = forward;
-      double poolY = strafe;
-      double poolZ = vertical;
-  
-      if (m_poolRelative) {
-          // Get IMU angles
-          double yawAngle = Math.toRadians(m_imu.getAngle());        // Yaw (rotation around Z)
-          double pitchAngle = Math.toRadians(m_imu.getGyroAngleY()); // Pitch (rotation around X)
-          double rollAngle = Math.toRadians(m_imu.getGyroAngleX());  // Roll (rotation around Y)
-  
-          // Calculate rotation matrix components
-          double cosYaw = Math.cos(yawAngle);
-          double sinYaw = Math.sin(yawAngle);
-          double cosPitch = Math.cos(pitchAngle);
-          double sinPitch = Math.sin(pitchAngle);
-          double cosRoll = Math.cos(rollAngle);
-          double sinRoll = Math.sin(rollAngle);
-  
-          // Transformation for pool-relative controls
-          double rotatedX = forward * (cosYaw * cosPitch) + strafe * (cosYaw * sinPitch * sinRoll - sinYaw * cosRoll) + vertical * (cosYaw * sinPitch * cosRoll + sinYaw * sinRoll);
-          double rotatedY = forward * (sinYaw * cosPitch) + strafe * (sinYaw * sinPitch * sinRoll + cosYaw * cosRoll) + vertical * (sinYaw * sinPitch * cosRoll - cosYaw * sinRoll);
-          double rotatedZ = forward * (-sinPitch) + strafe * (cosPitch * sinRoll) + vertical * (cosPitch * cosRoll);
-  
-          poolX = rotatedX;
-          poolY = rotatedY;
-          poolZ = rotatedZ;
-      }
-  
-      // Set power to thrusters for 3D movement
-      m_leftFront45.set(poolY + poolX);
-      m_leftRear45.set(-poolY + poolX);
-      m_rightFront45.set(poolY - poolX);
-      m_rightRear45.set(-poolY - poolX);
-  
-      // Vertical, pitch, roll, and yaw control
-      m_leftFrontForward.set(poolZ + roll + yaw + pitch);  // Add pitch adjustment
-      m_leftRearForward.set(poolZ - roll + yaw - pitch);   // Subtract pitch adjustment
-      m_rightFrontForward.set(poolZ + roll - yaw + pitch); // Add pitch adjustment
-      m_rightRearForward.set(poolZ - roll - yaw - pitch);  // Subtract pitch adjustment
-  
-      // Control the Newton gripper
-      Elastic.Notification notification = new Elastic.Notification();
-  
-      String currentGripperState = "Stopped";
-      if (m_controller.getAButton()) {
-          // Open the gripper for 4 seconds
-          if (gripperTimer.get() >= 4.0) {
-              m_newtonGripper.set(0.0);
-          } else {
-              m_newtonGripper.set(1.0); // Full forward power
-              currentGripperState = "Opening";
-          }
-      } else if (m_controller.getBButton()) {
-          // Close the gripper for 4 seconds
-          if (gripperTimer.get() >= 4.0) {
-              m_newtonGripper.set(0.0);
-          } else {
-              m_newtonGripper.set(-1.0); // Full reverse power
-              currentGripperState = "Closing";
-          }
+    // Teleop control logic (omitted here for brevity)
+
+    // Update simulation state and AdvantageScope publishers
+    // Get toggle state from Elastic
+    m_poolRelative = m_poolRelativeToggle.getBoolean(false);
+
+    // Read controller inputs with deadband applied
+    double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward
+    double strafe = applyDeadband(-m_controller.getLeftX(), 0.1); // Left/right
+    double vertical = applyDeadband(m_controller.getRightY() - m_controller.getLeftY(), 0.1); // Up/down
+    double yaw = applyDeadband(m_controller.getRightX(), 0.1); // Yaw rotation
+    double roll = (m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis()); // Analog roll control
+
+    // Pitch control using bumpers
+    double pitch = 0.0;
+    if (m_controller.getRightBumperButton()) {
+      pitch += 0.5; // Adjust pitch forward (positive value)
+    }
+    if (m_controller.getLeftBumperButton()) {
+      pitch -= 0.5; // Adjust pitch backward (negative value)
+    }
+
+    // Field-relative transformation
+    double poolX = forward;
+    double poolY = strafe;
+    double poolZ = vertical;
+
+    if (m_poolRelative) {
+      // Get IMU angles
+      double yawAngle = Math.toRadians(m_imu.getAngle()); // Yaw (rotation around Z)
+      double pitchAngle = Math.toRadians(m_imu.getGyroAngleY()); // Pitch (rotation around X)
+      double rollAngle = Math.toRadians(m_imu.getGyroAngleX()); // Roll (rotation around Y)
+
+      // Calculate rotation matrix components
+      double cosYaw = Math.cos(yawAngle);
+      double sinYaw = Math.sin(yawAngle);
+      double cosPitch = Math.cos(pitchAngle);
+      double sinPitch = Math.sin(pitchAngle);
+      double cosRoll = Math.cos(rollAngle);
+      double sinRoll = Math.sin(rollAngle);
+
+      // Transformation for pool-relative controls
+      double rotatedX = forward * (cosYaw * cosPitch) + strafe * (cosYaw * sinPitch * sinRoll - sinYaw * cosRoll) + vertical * (cosYaw * sinPitch * cosRoll + sinYaw * sinRoll);
+      double rotatedY = forward * (sinYaw * cosPitch) + strafe * (sinYaw * sinPitch * sinRoll + cosYaw * cosRoll) + vertical * (sinYaw * sinPitch * cosRoll - cosYaw * sinRoll);
+      double rotatedZ = forward * (-sinPitch) + strafe * (cosPitch * sinRoll) + vertical * (cosPitch * cosRoll);
+
+      poolX = rotatedX;
+      poolY = rotatedY;
+      poolZ = rotatedZ;
+    }
+
+    // Set power to thrusters for 3D movement
+    m_leftFront45.set(poolY + poolX);
+    m_leftRear45.set(-poolY + poolX);
+    m_rightFront45.set(poolY - poolX);
+    m_rightRear45.set(-poolY - poolX);
+
+    // Vertical, pitch, roll, and yaw control
+    m_leftFrontForward.set(poolZ + roll + yaw + pitch); // Add pitch adjustment
+    m_leftRearForward.set(poolZ - roll + yaw - pitch); // Subtract pitch adjustment
+    m_rightFrontForward.set(poolZ + roll - yaw + pitch); // Add pitch adjustment
+    m_rightRearForward.set(poolZ - roll - yaw - pitch); // Subtract pitch adjustment
+
+    // Control the Newton gripper
+    Elastic.Notification notification = new Elastic.Notification();
+
+    String currentGripperState = "Stopped";
+    if (m_controller.getAButton()) {
+      // Open the gripper for 4 seconds
+      if (gripperTimer.get() >= 4.0) {
+        m_newtonGripper.set(0.0);
       } else {
-          // Stop the gripper
-          m_newtonGripper.set(0.0);
-          gripperTimer.reset();
+        m_newtonGripper.set(1.0); // Full forward power
+        currentGripperState = "Opening";
       }
-  
-      // Notification logic for Newton gripper
-      if (!currentGripperState.equals(lastGripperState)) {
-          Elastic.sendNotification(notification
-              .withLevel(Elastic.Notification.NotificationLevel.INFO)
-              .withTitle("Gripper " + currentGripperState)
-              .withDescription("Power set to: " + m_newtonGripper.getVoltage())
-              .withDisplaySeconds(5.0));
-          lastGripperState = currentGripperState;
-  
-          // Update the gripper status on SmartDashboard
-          SmartDashboard.putString("Gripper Status", currentGripperState);
+    } else if (m_controller.getBButton()) {
+      // Close the gripper for 4 seconds
+      if (gripperTimer.get() >= 4.0) {
+        m_newtonGripper.set(0.0);
+      } else {
+        m_newtonGripper.set(-1.0); // Full reverse power
+        currentGripperState = "Closing";
       }
-  
-      // Gyro control and notifications
-      if (m_controller.getXButtonPressed()) {
-          m_imu.calibrate();
-          Elastic.sendNotification(new Elastic.Notification()
-              .withLevel(Elastic.Notification.NotificationLevel.WARNING)
-              .withTitle("Gyro Calibration")
-              .withDescription("Gyro calibrating as requested.")
-              .withDisplaySeconds(5.0));
-      }
-  
-      if (m_controller.getYButtonPressed()) {
-          m_imu.reset();
-          Elastic.sendNotification(new Elastic.Notification()
-              .withLevel(Elastic.Notification.NotificationLevel.INFO)
-              .withTitle("Gyro Reset")
-              .withDescription("Gyro heading reset to zero.")
-              .withDisplaySeconds(5.0));
-      }
-  
-      // Update simulation with pitch, roll, and yaw control
-      updateSimulation(poolX, poolY, vertical, yaw, pitch);
+    } else {
+      // Stop the gripper
+      m_newtonGripper.set(0.0);
+      gripperTimer.reset();
+    }
+
+    // Notification logic for Newton gripper
+    if (!currentGripperState.equals(lastGripperState)) {
+      Elastic.sendNotification(notification
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Gripper " + currentGripperState)
+        .withDescription("Power set to: " + m_newtonGripper.getVoltage())
+        .withDisplaySeconds(5.0));
+      lastGripperState = currentGripperState;
+
+      // Update the gripper status on SmartDashboard
+      SmartDashboard.putString("Gripper Status", currentGripperState);
+    }
+
+    // Gyro control and notifications
+    if (m_controller.getXButtonPressed()) {
+      m_imu.calibrate();
+      Elastic.sendNotification(new Elastic.Notification()
+        .withLevel(Elastic.Notification.NotificationLevel.WARNING)
+        .withTitle("Gyro Calibration")
+        .withDescription("Gyro calibrating as requested.")
+        .withDisplaySeconds(5.0));
+    }
+
+    if (m_controller.getYButtonPressed()) {
+      m_imu.reset();
+      Elastic.sendNotification(new Elastic.Notification()
+        .withLevel(Elastic.Notification.NotificationLevel.INFO)
+        .withTitle("Gyro Reset")
+        .withDescription("Gyro heading reset to zero.")
+        .withDisplaySeconds(5.0));
+    }
+
+    // Update simulation with pitch, roll, and yaw control
+    updateSimulation(poolX, poolY, vertical, yaw, pitch);
   }
 
   /**
@@ -305,28 +313,19 @@ public class Robot extends LoggedRobot {
 
     // Update the simulation visualization
     m_field.setRobotPose(m_pose.toPose2d());
-  }
 
-  private void publishPoseToAdvantageScope() {
-    // Convert Pose3d data into a double array format
-    double[] poseData = new double[] {
-      m_pose.getTranslation().getX(),
-      m_pose.getTranslation().getY(),
-      m_pose.getTranslation().getZ(),
-      m_pose.getRotation().getX(),
-      m_pose.getRotation().getY(),
-      m_pose.getRotation().getZ()
-    };
-
-    // Publish the pose data
-    m_poseEntry.setDoubleArray(poseData);
+    // Publish the updated pose to AdvantageScope
+    Pose3d poseA = m_pose;
+    Pose3d poseB = new Pose3d(); // Additional pose (optional)
+    m_posePublisher.set(poseA);
+    m_poseArrayPublisher.set(new Pose3d[] {
+      poseA,
+      poseB
+    });
   }
 
   @Override
   public void simulationPeriodic() {
-    // Publish pose to AdvantageScope
-    publishPoseToAdvantageScope();
-
     // Update simulation telemetry
     SmartDashboard.putString("Pose", m_pose.toString());
     SmartDashboard.putString("Velocity", m_velocity.toString());
@@ -340,6 +339,7 @@ public class Robot extends LoggedRobot {
       m_simulatedGyroAngle.set(newAngle);
     }
   }
+
   @Override
   public void autonomousInit() {
     // Autonomous initialization code here
