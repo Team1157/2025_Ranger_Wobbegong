@@ -23,7 +23,11 @@ import frc.robot.util.Elastic;
 
 /**
  * This class controls an underwater robot with 8 thrusters configured for full 3D movement
- * and includes simulation for testing in a virtual environment.
+ * and includes simulation for 3d testing in a virtual environment.
+ * The robot is equipped with a Newton gripper for manipulation and completion of tasks.
+ * As of now the 3D physics simulation requires a real driverstation and Xbox controller to work
+ * how it does on the Robot, although WPILib simulation works fine when viewing the Field2d network
+ * table widget, hence its inclusion in the code.
  */
 public class Robot extends LoggedRobot {
 
@@ -87,18 +91,12 @@ public class Robot extends LoggedRobot {
     }
 
     // Initialize AdvantageScope publishers
-    m_posePublisher = NetworkTableInstance.getDefault()
-      .getStructTopic("RobotPose", Pose3d.struct).publish();
-    m_poseArrayPublisher = NetworkTableInstance.getDefault()
-      .getStructArrayTopic("RobotPoseArray", Pose3d.struct).publish();
+    m_posePublisher = NetworkTableInstance.getDefault().getStructTopic("RobotPose", Pose3d.struct).publish();
+    m_poseArrayPublisher = NetworkTableInstance.getDefault().getStructArrayTopic("RobotPoseArray", Pose3d.struct).publish();
 
     // Calibrate the gyro on startup
     m_imu.calibrate();
-    Elastic.sendNotification(new Elastic.Notification()
-      .withLevel(Elastic.Notification.NotificationLevel.INFO)
-      .withTitle("Gyro Calibration")
-      .withDescription("Gyro calibrating on startup.")
-      .withDisplaySeconds(5.0));
+    Elastic.sendNotification(new Elastic.Notification().withLevel(Elastic.Notification.NotificationLevel.INFO).withTitle("Gyro Calibration").withDescription("Gyro calibrating on startup.").withDisplaySeconds(5.0));
 
     // Add pool-relative toggle to Elastic
     m_poolRelativeToggle = SmartDashboard.getEntry("PoolRelative");
@@ -115,18 +113,19 @@ public class Robot extends LoggedRobot {
   @Override
   public void teleopPeriodic() {
     // Teleop control logic (omitted here for brevity)
-
     // Update simulation state and AdvantageScope publishers
     // Get toggle state from Elastic
     m_poolRelative = m_poolRelativeToggle.getBoolean(false);
 
     // Read controller inputs with deadband applied
-    double forward = applyDeadband(-m_controller.getLeftY(), 0.1); // Forward/backward
-    double strafe = applyDeadband(-m_controller.getLeftX(), 0.1); // Left/right
-    double vertical = applyDeadband(m_controller.getRightY() - m_controller.getLeftY(), 0.1); // Up/down
-    double yaw = applyDeadband(m_controller.getRightX(), 0.1); // Yaw rotation
-    double roll = (m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis()); // Analog roll control
-
+    double forward = applyDeadband( - m_controller.getLeftY(), 0.1); // Forward/backward
+    double strafe = applyDeadband( - m_controller.getLeftX(), 0.1); // Left/right
+    double vertical = applyDeadband(
+    m_controller.getRightY() - m_controller.getLeftY(), 0.1); // Up/down
+    double yaw = applyDeadband(
+    m_controller.getRightX(), 0.1); // Yaw rotation
+    double roll = (
+    m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis()); // Analog roll control
     // Pitch control using bumpers
     double pitch = 0.0;
     if (m_controller.getRightBumperButton()) {
@@ -146,7 +145,6 @@ public class Robot extends LoggedRobot {
       double yawAngle = Math.toRadians(m_imu.getAngle()); // Yaw (rotation around Z)
       double pitchAngle = Math.toRadians(m_imu.getGyroAngleY()); // Pitch (rotation around X)
       double rollAngle = Math.toRadians(m_imu.getGyroAngleX()); // Roll (rotation around Y)
-
       // Calculate rotation matrix components
       double cosYaw = Math.cos(yawAngle);
       double sinYaw = Math.sin(yawAngle);
@@ -158,7 +156,7 @@ public class Robot extends LoggedRobot {
       // Transformation for pool-relative controls
       double rotatedX = forward * (cosYaw * cosPitch) + strafe * (cosYaw * sinPitch * sinRoll - sinYaw * cosRoll) + vertical * (cosYaw * sinPitch * cosRoll + sinYaw * sinRoll);
       double rotatedY = forward * (sinYaw * cosPitch) + strafe * (sinYaw * sinPitch * sinRoll + cosYaw * cosRoll) + vertical * (sinYaw * sinPitch * cosRoll - cosYaw * sinRoll);
-      double rotatedZ = forward * (-sinPitch) + strafe * (cosPitch * sinRoll) + vertical * (cosPitch * cosRoll);
+      double rotatedZ = forward * ( - sinPitch) + strafe * (cosPitch * sinRoll) + vertical * (cosPitch * cosRoll);
 
       poolX = rotatedX;
       poolY = rotatedY;
@@ -167,16 +165,15 @@ public class Robot extends LoggedRobot {
 
     // Set power to thrusters for 3D movement
     m_leftFront45.set(poolY + poolX);
-    m_leftRear45.set(-poolY + poolX);
+    m_leftRear45.set( - poolY + poolX);
     m_rightFront45.set(poolY - poolX);
-    m_rightRear45.set(-poolY - poolX);
+    m_rightRear45.set( - poolY - poolX);
 
     // Vertical, pitch, roll, and yaw control
     m_leftFrontForward.set(poolZ + roll + yaw + pitch); // Add pitch adjustment
     m_leftRearForward.set(poolZ - roll + yaw - pitch); // Subtract pitch adjustment
     m_rightFrontForward.set(poolZ + roll - yaw + pitch); // Add pitch adjustment
     m_rightRearForward.set(poolZ - roll - yaw - pitch); // Subtract pitch adjustment
-
     // Control the Newton gripper
     Elastic.Notification notification = new Elastic.Notification();
 
@@ -186,7 +183,7 @@ public class Robot extends LoggedRobot {
       if (gripperTimer.get() >= 4.0) {
         m_newtonGripper.set(0.0);
       } else {
-        m_newtonGripper.set(1.0); // Full forward power
+        m_newtonGripper.set(1.0); // Full forward power (open)
         currentGripperState = "Opening";
       }
     } else if (m_controller.getBButton()) {
@@ -194,7 +191,7 @@ public class Robot extends LoggedRobot {
       if (gripperTimer.get() >= 4.0) {
         m_newtonGripper.set(0.0);
       } else {
-        m_newtonGripper.set(-1.0); // Full reverse power
+        m_newtonGripper.set( - 1.0); // Full reverse power (close)
         currentGripperState = "Closing";
       }
     } else {
@@ -203,39 +200,27 @@ public class Robot extends LoggedRobot {
       gripperTimer.reset();
     }
 
-    // Notification logic for Newton gripper
+    // Notification logic for Newton gripper to send the elastic notifications on state change
     if (!currentGripperState.equals(lastGripperState)) {
-      Elastic.sendNotification(notification
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Gripper " + currentGripperState)
-        .withDescription("Power set to: " + m_newtonGripper.getVoltage())
-        .withDisplaySeconds(5.0));
+      Elastic.sendNotification(notification.withLevel(Elastic.Notification.NotificationLevel.INFO).withTitle("Gripper " + currentGripperState).withDescription("Power set to: " + m_newtonGripper.getVoltage()).withDisplaySeconds(5.0));
       lastGripperState = currentGripperState;
 
-      // Update the gripper status on SmartDashboard
+      // Update the gripper status on SmartDashboard for Elastic
       SmartDashboard.putString("Gripper Status", currentGripperState);
     }
 
-    // Gyro control and notifications
+    // Gyro control and notifications for calibration and reset
     if (m_controller.getXButtonPressed()) {
       m_imu.calibrate();
-      Elastic.sendNotification(new Elastic.Notification()
-        .withLevel(Elastic.Notification.NotificationLevel.WARNING)
-        .withTitle("Gyro Calibration")
-        .withDescription("Gyro calibrating as requested.")
-        .withDisplaySeconds(5.0));
+      Elastic.sendNotification(new Elastic.Notification().withLevel(Elastic.Notification.NotificationLevel.WARNING).withTitle("Gyro Calibration").withDescription("Gyro calibrating as requested.").withDisplaySeconds(5.0));
     }
 
     if (m_controller.getYButtonPressed()) {
       m_imu.reset();
-      Elastic.sendNotification(new Elastic.Notification()
-        .withLevel(Elastic.Notification.NotificationLevel.INFO)
-        .withTitle("Gyro Reset")
-        .withDescription("Gyro heading reset to zero.")
-        .withDisplaySeconds(5.0));
+      Elastic.sendNotification(new Elastic.Notification().withLevel(Elastic.Notification.NotificationLevel.INFO).withTitle("Gyro Reset").withDescription("Gyro heading reset to zero.").withDisplaySeconds(5.0));
     }
 
-    // Update simulation with pitch, roll, and yaw control
+    // Update simulation with pitch, roll, and yaw control inputs
     updateSimulation(poolX, poolY, vertical, yaw, pitch);
   }
 
@@ -243,8 +228,8 @@ public class Robot extends LoggedRobot {
    * Applies a deadband to the joystick input to filter out small, unintended movements.
    *
    * @param value    The joystick input value.
-   * @param deadband The deadband threshold.
-   * @return The adjusted joystick value.
+   * @param deadband The deadband threshold (applied symmetrically).
+   * @return The adjusted joystick value, after the deadband is applied.
    */
   private double applyDeadband(double value, double deadband) {
     if (Math.abs(value) > deadband) {
@@ -257,21 +242,20 @@ public class Robot extends LoggedRobot {
   /**
    * Updates the simulation state based on the current inputs and includes water resistance.
    *
-   * @param x      Forward/backward input
-   * @param y      Left/right input
-   * @param z      Up/down input
-   * @param rotate Rotation input
-   * @param pitch  Pitch control input
+   * @param x      Forward/backward input (positive forward)
+   * @param y      Left/right input (positive right)
+   * @param z      Up/down input (positive up)
+   * @param rotate Rotation input (yaw control)
+   * @param pitch  Pitch control input (positive forward)
    */
   private void updateSimulation(double x, double y, double z, double rotate, double pitch) {
-    // Time step (assuming teleopPeriodic is called every 20ms)
+    // Simulation time step (20ms)
     double deltaTime = 0.02;
 
     // Water resistance coefficients (drag constants)
     final double dragCoefficientLinear = 0.5; // Linear drag for x, y, z
-    final double dragCoefficientRotational = 0.3; // Rotational drag for yaw
-
-    // Convert robot-relative inputs to global frame using the robot's current rotation
+    final double dragCoefficientRotational = 0.3; // Rotational drag for yaw (z)
+    // Convert robot-relative inputs to global frame using the robot's current rotation (yaw)
     Translation3d robotRelativeForce = new Translation3d(x, y, z);
     Translation3d globalForce = robotRelativeForce.rotateBy(m_pose.getRotation());
 
@@ -279,54 +263,37 @@ public class Robot extends LoggedRobot {
     double rotationalForce = rotate;
     double pitchForce = pitch;
 
-    // Apply water resistance (drag force reduces velocity)
-    Translation3d dragForce = new Translation3d(
-      -dragCoefficientLinear * m_velocity.getX(),
-      -dragCoefficientLinear * m_velocity.getY(),
-      -dragCoefficientLinear * m_velocity.getZ()
-    );
+    // Apply water resistance (drag force reduces velocity) 
+    Translation3d dragForce = new Translation3d( - dragCoefficientLinear * m_velocity.getX(), -dragCoefficientLinear * m_velocity.getY(), -dragCoefficientLinear * m_velocity.getZ());
     double rotationalDragForce = -dragCoefficientRotational * m_rotation.getZ();
 
-    // Update velocity with applied forces and drag
+    // Update velocity with applied forces and drag (linear and rotational)
     m_velocity = new Translation3d(
-      m_velocity.getX() + (globalForce.getX() + dragForce.getX()) * deltaTime,
-      m_velocity.getY() + (globalForce.getY() + dragForce.getY()) * deltaTime,
-      m_velocity.getZ() + (globalForce.getZ() + dragForce.getZ()) * deltaTime
-    );
+    m_velocity.getX() + (globalForce.getX() + dragForce.getX()) * deltaTime, m_velocity.getY() + (globalForce.getY() + dragForce.getY()) * deltaTime, m_velocity.getZ() + (globalForce.getZ() + dragForce.getZ()) * deltaTime);
 
-    // Update rotation rates with applied forces and drag
+    // Update rotation rates with applied forces and drag 
     m_rotation = new Rotation3d(
-      m_rotation.getX() + pitchForce * deltaTime,
-      m_rotation.getY(),
-      m_rotation.getZ() + (rotationalForce + rotationalDragForce) * deltaTime
-    );
+    m_rotation.getX() + pitchForce * deltaTime, m_rotation.getY(), m_rotation.getZ() + (rotationalForce + rotationalDragForce) * deltaTime);
 
-    // Update pose (position and orientation)
+    // Update pose (position and orientation) 
     m_pose = new Pose3d(
-      m_pose.getTranslation().plus(m_velocity.times(deltaTime)),
-      new Rotation3d(
-        m_pose.getRotation().getX() + m_rotation.getX() * deltaTime,
-        m_pose.getRotation().getY() + m_rotation.getY() * deltaTime,
-        m_pose.getRotation().getZ() + m_rotation.getZ() * deltaTime
-      )
-    );
+    m_pose.getTranslation().plus(m_velocity.times(deltaTime)), new Rotation3d(
+    m_pose.getRotation().getX() + m_rotation.getX() * deltaTime, m_pose.getRotation().getY() + m_rotation.getY() * deltaTime, m_pose.getRotation().getZ() + m_rotation.getZ() * deltaTime));
 
-    // Update the simulation visualization
+    // Update the simulation visualization for 2d
     m_field.setRobotPose(m_pose.toPose2d());
 
-    // Publish the updated pose to AdvantageScope
+    // Publish the updated pose to AdvantageScope 
     Pose3d poseA = m_pose;
-    Pose3d poseB = new Pose3d(); // Additional pose (optional)
     m_posePublisher.set(poseA);
     m_poseArrayPublisher.set(new Pose3d[] {
-      poseA,
-      poseB
+      poseA
     });
   }
 
   @Override
   public void simulationPeriodic() {
-    // Update simulation telemetry
+    // Update simulation telemetry and simulated gyro
     SmartDashboard.putString("Pose", m_pose.toString());
     SmartDashboard.putString("Velocity", m_velocity.toString());
     SmartDashboard.putString("Rotation", m_rotation.toString());
@@ -357,6 +324,14 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void testPeriodic() {
-    // Test periodic code here
+    m_leftFront45.set(0.5);
+    m_leftRear45.set(0.5);
+    m_rightFront45.set(0.5);
+    m_rightRear45.set(0.5);
+    m_leftFrontForward.set(0.5);
+    m_leftRearForward.set(0.5);
+    m_rightFrontForward.set(0.5);
+    m_rightRearForward.set(0.5);
+    m_newtonGripper.set(0.5);
   }
 }
