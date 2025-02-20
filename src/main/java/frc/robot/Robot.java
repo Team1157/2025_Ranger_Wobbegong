@@ -20,10 +20,12 @@ import edu.wpi.first.wpilibj.simulation.SimDeviceSim;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.util.Elastic;
+import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.net.WebServer;
 
 /**
- * This class controls an underwater robot with 8 thrusters configured for full 3D movement
- * and includes simulation for 3d testing in a virtual environment.
+ * This class controls an underwater robot with 8 BlueRobotics T200 thrusters configured for full 3D 
+ * movement, and includes simulation for 3d testing in a virtual environment.
  * The robot is equipped with a Newton gripper for manipulation and completion of tasks.
  * As of now the 3D physics simulation requires a real driverstation and Xbox controller to work
  * how it does on the Robot, although WPILib simulation works fine when viewing the Field2d network
@@ -82,6 +84,8 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void robotInit() {
+    // Webserver for Elastic automatic layout downloading
+    WebServer.start(5800, Filesystem.getDeployDirectory().getPath());
     // Initialize simulation visualization
     SmartDashboard.putData("Field", m_field);
     SendableRegistry.addChild(m_newtonGripper, "NewtonGripper");
@@ -120,12 +124,9 @@ public class Robot extends LoggedRobot {
     // Read controller inputs with deadband applied
     double forward = applyDeadband( - m_controller.getLeftY(), 0.1); // Forward/backward
     double strafe = applyDeadband( - m_controller.getLeftX(), 0.1); // Left/right
-    double vertical = applyDeadband(
-    m_controller.getRightY() - m_controller.getLeftY(), 0.1); // Up/down
-    double yaw = applyDeadband(
-    m_controller.getRightX(), 0.1); // Yaw rotation
-    double roll = (
-    m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis()); // Analog roll control
+    double vertical = applyDeadband(m_controller.getRightY(), 0.1); // Up/down
+    double yaw = applyDeadband(m_controller.getRightX(), 0.1); // Yaw rotation
+    double roll = (m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis()); // Analog roll control
     // Pitch control using bumpers
     double pitch = 0.0;
     if (m_controller.getRightBumperButton()) {
@@ -170,10 +171,11 @@ public class Robot extends LoggedRobot {
     m_rightRear45.set( - poolY - poolX);
 
     // Vertical, pitch, roll, and yaw control
-    m_leftFrontForward.set(poolZ + roll + yaw + pitch); // Add pitch adjustment
-    m_leftRearForward.set(poolZ - roll + yaw - pitch); // Subtract pitch adjustment
-    m_rightFrontForward.set(poolZ + roll - yaw + pitch); // Add pitch adjustment
-    m_rightRearForward.set(poolZ - roll - yaw - pitch); // Subtract pitch adjustment
+    m_leftFrontForward.set(poolZ + roll + yaw + pitch);
+    m_leftRearForward.set(poolZ - roll + yaw - pitch);
+    m_rightFrontForward.set(poolZ + roll - yaw + pitch);
+    m_rightRearForward.set(poolZ - roll - yaw - pitch);
+    
     // Control the Newton gripper
     Elastic.Notification notification = new Elastic.Notification();
 
