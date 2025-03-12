@@ -116,7 +116,7 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void teleopPeriodic() {
-    // Teleop control logic (omitted here for brevity)
+    // Teleop control logic here
     // Update simulation state and AdvantageScope publishers
     // Get toggle state from Elastic
     m_poolRelative = m_poolRelativeToggle.getBoolean(false);
@@ -255,8 +255,8 @@ public class Robot extends LoggedRobot {
     double deltaTime = 0.02;
 
     // Water resistance coefficients (drag constants)
-    final double dragCoefficientLinear = 0.5; // Linear drag for x, y, z
-    final double dragCoefficientRotational = 0.3; // Rotational drag for yaw (z)
+    final double dragCoefficientLinear = 2.9; // Linear drag for x, y, z
+    final double dragCoefficientRotational = 2.8; // Rotational drag for yaw (z)
     // Convert robot-relative inputs to global frame using the robot's current rotation (yaw)
     Translation3d robotRelativeForce = new Translation3d(x, y, z);
     Translation3d globalForce = robotRelativeForce.rotateBy(m_pose.getRotation());
