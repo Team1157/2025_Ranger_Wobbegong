@@ -187,19 +187,19 @@ public class Robot extends LoggedRobot {
       } else {
         m_newtonGripper.set(1.0); // Full forward power (open)
         currentGripperState = "Opening";
+        gripperTimer.reset();
+        gripperTimer.start();
       }
-    } else if (m_controller.getBButton()) {
+    } else if (m_controller.getBButtonPressed()) {
       // Close the gripper for 4 seconds
-      if (gripperTimer.get() >= 4.0) {
-        m_newtonGripper.set(0.0);
-      } else {
-        m_newtonGripper.set( - 1.0); // Full reverse power (close)
-        currentGripperState = "Closing";
-      }
-    } else {
-      // Stop the gripper
-      m_newtonGripper.set(0.0);
+      m_newtonGripper.set(-1.0); // Full reverse power (close)
+      currentGripperState = "Closing";
       gripperTimer.reset();
+      gripperTimer.start();
+    } else if (gripperTimer.get() >= 4.0) {
+      // Stop the gripper after 4 seconds
+      m_newtonGripper.set(0.0);
+      gripperTimer.stop();
     }
 
     // Notification logic for Newton gripper to send the elastic notifications on state change
