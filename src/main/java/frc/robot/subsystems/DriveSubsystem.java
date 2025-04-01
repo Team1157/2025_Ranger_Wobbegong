@@ -1,9 +1,15 @@
 // Copyright (c) Ada Tessar (me@adabit.org)
 package frc.robot.subsystems;
 
+import org.littletonrobotics.junction.Logger;
+
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.networktables.DoubleArrayPublisher;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.ADIS16448_IMU;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.util.BlueRoboticsBasicESC;
 
@@ -20,6 +26,21 @@ public class DriveSubsystem extends SubsystemBase {
     
     // Gyro definition
     private final ADIS16448_IMU m_imu = new ADIS16448_IMU();
+    
+    // NetworkTable publishers for AdvantageScope
+    private DoubleArrayPublisher m_thrusterOutputsPublisher;
+    private DoubleArrayPublisher m_gyroDataPublisher;
+    private DoubleArrayPublisher m_accelerometerDataPublisher;
+    private DoublePublisher m_temperaturePublisher;
+    private DoublePublisher m_pressurePublisher;
+    
+    // Current drive values for logging
+    private double m_currentX = 0.0;
+    private double m_currentY = 0.0;
+    private double m_currentZ = 0.0;
+    private double m_currentYaw = 0.0;
+    private double m_currentPitch = 0.0;
+    private double m_currentRoll = 0.0;
     
     public DriveSubsystem() {
         // Set up thrusters in the SendableRegistry for debugging
@@ -46,6 +67,84 @@ public class DriveSubsystem extends SubsystemBase {
         
         SendableRegistry.addChild(this, m_rightRearForward);
         SendableRegistry.addLW(m_rightRearForward, "RightRearForward");
+        
+        // Initialize NetworkTable publishers
+        NetworkTableInstance nt = NetworkTableInstance.getDefault();
+        m_thrusterOutputsPublisher = nt.getDoubleArrayTopic("/Drive/ThrusterOutputs").publish();
+        m_gyroDataPublisher = nt.getDoubleArrayTopic("/Drive/GyroData").publish();
+        m_accelerometerDataPublisher = nt.getDoubleArrayTopic("/Drive/AccelerometerData").publish();
+        m_temperaturePublisher = nt.getDoubleTopic("/Drive/Temperature").publish();
+        m_pressurePublisher = nt.getDoubleTopic("/Drive/Pressure").publish();
+    }
+    
+    @Override
+    public void periodic() {
+        // Log thruster outputs to NetworkTables
+        m_thrusterOutputsPublisher.set(new double[] {
+            m_leftFront45.get(),
+            m_leftRear45.get(),
+            m_rightFront45.get(),
+            m_rightRear45.get(),
+            m_leftFrontForward.get(),
+            m_leftRearForward.get(),
+            m_rightFrontForward.get(),
+            m_rightRearForward.get()
+        });
+        
+        // Log IMU data
+        m_gyroDataPublisher.set(new double[] {
+            m_imu.getAngle(), // yaw
+            m_imu.getGyroAngleY(), // pitch
+            m_imu.getGyroAngleX(), // roll
+            m_imu.getGyroRateZ(), // yaw rate
+            m_imu.getGyroRateY(), // pitch rate
+            m_imu.getGyroRateX()  // roll rate
+        });
+        
+        m_accelerometerDataPublisher.set(new double[] {
+            m_imu.getAccelX(),
+            m_imu.getAccelY(),
+            m_imu.getAccelZ()
+        });
+        
+        m_temperaturePublisher.set(m_imu.getTemperature());
+        m_pressurePublisher.set(m_imu.getBarometricPressure());
+        
+        // Log to AdvantageKit
+        Logger.recordOutput("Drive/ThrusterOutputs/LeftFront45", m_leftFront45.get());
+        Logger.recordOutput("Drive/ThrusterOutputs/LeftRear45", m_leftRear45.get());
+        Logger.recordOutput("Drive/ThrusterOutputs/RightFront45", m_rightFront45.get());
+        Logger.recordOutput("Drive/ThrusterOutputs/RightRear45", m_rightRear45.get());
+        Logger.recordOutput("Drive/ThrusterOutputs/LeftFrontForward", m_leftFrontForward.get());
+        Logger.recordOutput("Drive/ThrusterOutputs/LeftRearForward", m_leftRearForward.get());
+        Logger.recordOutput("Drive/ThrusterOutputs/RightFrontForward", m_rightFrontForward.get());
+        Logger.recordOutput("Drive/ThrusterOutputs/RightRearForward", m_rightRearForward.get());
+        
+        // Log IMU data to AdvantageKit
+        Logger.recordOutput("Drive/IMU/Yaw", m_imu.getAngle());
+        Logger.recordOutput("Drive/IMU/Pitch", m_imu.getGyroAngleY());
+        Logger.recordOutput("Drive/IMU/Roll", m_imu.getGyroAngleX());
+        Logger.recordOutput("Drive/IMU/YawRate", m_imu.getGyroRateZ());
+        Logger.recordOutput("Drive/IMU/PitchRate", m_imu.getGyroRateY());
+        Logger.recordOutput("Drive/IMU/RollRate", m_imu.getGyroRateX());
+        Logger.recordOutput("Drive/IMU/AccelX", m_imu.getAccelX());
+        Logger.recordOutput("Drive/IMU/AccelY", m_imu.getAccelY());
+        Logger.recordOutput("Drive/IMU/AccelZ", m_imu.getAccelZ());
+        Logger.recordOutput("Drive/IMU/Temperature", m_imu.getTemperature());
+        Logger.recordOutput("Drive/IMU/Pressure", m_imu.getBarometricPressure());
+        
+        // Log current drive values
+        Logger.recordOutput("Drive/Commands/X", m_currentX);
+        Logger.recordOutput("Drive/Commands/Y", m_currentY);
+        Logger.recordOutput("Drive/Commands/Z", m_currentZ);
+        Logger.recordOutput("Drive/Commands/Yaw", m_currentYaw);
+        Logger.recordOutput("Drive/Commands/Pitch", m_currentPitch);
+        Logger.recordOutput("Drive/Commands/Roll", m_currentRoll);
+        
+        // Update SmartDashboard
+        SmartDashboard.putNumber("Yaw", m_imu.getAngle());
+        SmartDashboard.putNumber("Pitch", m_imu.getGyroAngleY());
+        SmartDashboard.putNumber("Roll", m_imu.getGyroAngleX());
     }
     
     /**
@@ -59,6 +158,14 @@ public class DriveSubsystem extends SubsystemBase {
      * @param roll     Roll rotation
      */
     public void drive(double poolX, double poolY, double poolZ, double yaw, double pitch, double roll) {
+        // Store current values for logging
+        m_currentX = poolX;
+        m_currentY = poolY;
+        m_currentZ = poolZ;
+        m_currentYaw = yaw;
+        m_currentPitch = pitch;
+        m_currentRoll = roll;
+        
         // Set power to thrusters for 3D movement
         m_leftFront45.set(poolY + poolX);
         m_leftRear45.set(-poolY + poolX);
@@ -70,6 +177,16 @@ public class DriveSubsystem extends SubsystemBase {
         m_leftRearForward.set(poolZ - roll + yaw - pitch);
         m_rightFrontForward.set(poolZ + roll - yaw + pitch);
         m_rightRearForward.set(poolZ - roll - yaw - pitch);
+        
+        // Log thruster powers to AdvantageKit as they're set
+        Logger.recordOutput("Drive/CommandedPowers/LeftFront45", poolY + poolX);
+        Logger.recordOutput("Drive/CommandedPowers/LeftRear45", -poolY + poolX);
+        Logger.recordOutput("Drive/CommandedPowers/RightFront45", poolY - poolX);
+        Logger.recordOutput("Drive/CommandedPowers/RightRear45", -poolY - poolX);
+        Logger.recordOutput("Drive/CommandedPowers/LeftFrontForward", poolZ + roll + yaw + pitch);
+        Logger.recordOutput("Drive/CommandedPowers/LeftRearForward", poolZ - roll + yaw - pitch);
+        Logger.recordOutput("Drive/CommandedPowers/RightFrontForward", poolZ + roll - yaw + pitch);
+        Logger.recordOutput("Drive/CommandedPowers/RightRearForward", poolZ - roll - yaw - pitch);
     }
     
     /**
@@ -106,6 +223,19 @@ public class DriveSubsystem extends SubsystemBase {
         double rotatedZ = robotX * (-sinPitch) + 
                           robotY * (cosPitch * sinRoll) + 
                           robotZ * (cosPitch * cosRoll);
+                          
+        // Log transformation values
+        Logger.recordOutput("Drive/PoolRelative/InputX", robotX);
+        Logger.recordOutput("Drive/PoolRelative/InputY", robotY);
+        Logger.recordOutput("Drive/PoolRelative/InputZ", robotZ);
+        Logger.recordOutput("Drive/PoolRelative/OutputX", rotatedX);
+        Logger.recordOutput("Drive/PoolRelative/OutputY", rotatedY);
+        Logger.recordOutput("Drive/PoolRelative/OutputZ", rotatedZ);
+        Logger.recordOutput("Drive/PoolRelative/TransformMatrix", new double[] {
+            cosYaw * cosPitch, cosYaw * sinPitch * sinRoll - sinYaw * cosRoll, cosYaw * sinPitch * cosRoll + sinYaw * sinRoll,
+            sinYaw * cosPitch, sinYaw * sinPitch * sinRoll + cosYaw * cosRoll, sinYaw * sinPitch * cosRoll - cosYaw * sinRoll,
+            -sinPitch, cosPitch * sinRoll, cosPitch * cosRoll
+        });
 
         return new double[] { rotatedX, rotatedY, rotatedZ };
     }
