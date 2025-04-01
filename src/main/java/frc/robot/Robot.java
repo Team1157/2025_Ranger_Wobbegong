@@ -2,26 +2,22 @@
 package frc.robot;
 
 import org.littletonrobotics.junction.LoggedRobot;
-
-import edu.wpi.first.hal.SimDouble;
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.NetworkTableEntry;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StructPublisher;
-import edu.wpi.first.networktables.StructArrayPublisher;
-import edu.wpi.first.util.sendable.SendableRegistry;
-import edu.wpi.first.wpilibj.ADIS16448_IMU;
-import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.XboxController;
-import frc.robot.util.BlueRoboticsBasicESC;
-import edu.wpi.first.wpilibj.simulation.SimDeviceSim;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.util.Elastic;
-import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.net.WebServer;
+import frc.robot.commands.CloseGripperCommand;
+import frc.robot.commands.DefaultDriveCommand;
+import frc.robot.commands.OpenGripperCommand;
+import frc.robot.subsystems.DriveSubsystem;
+import frc.robot.subsystems.GripperSubsystem;
+import frc.robot.subsystems.SimulationSubsystem;
+import frc.robot.util.Elastic;
 
 /**
  * This class controls an underwater robot with 8 BlueRobotics T200 thrusters configured for full 3D 
@@ -32,200 +28,122 @@ import edu.wpi.first.net.WebServer;
  * table widget, hence its inclusion in the code.
  */
 public class Robot extends LoggedRobot {
-
-  // Thruster definitions
-  private final BlueRoboticsBasicESC m_leftFront45 = new BlueRoboticsBasicESC(0);
-  private final BlueRoboticsBasicESC m_leftRear45 = new BlueRoboticsBasicESC(1);
-  private final BlueRoboticsBasicESC m_rightFront45 = new BlueRoboticsBasicESC(2);
-  private final BlueRoboticsBasicESC m_rightRear45 = new BlueRoboticsBasicESC(3);
-  private final BlueRoboticsBasicESC m_leftFrontForward = new BlueRoboticsBasicESC(4);
-  private final BlueRoboticsBasicESC m_leftRearForward = new BlueRoboticsBasicESC(5);
-  private final BlueRoboticsBasicESC m_rightFrontForward = new BlueRoboticsBasicESC(6);
-  private final BlueRoboticsBasicESC m_rightRearForward = new BlueRoboticsBasicESC(7);
-  private final BlueRoboticsBasicESC m_newtonGripper = new BlueRoboticsBasicESC(9);
+  // Controller
   private final XboxController m_controller = new XboxController(0);
-
-  // Gyro definition
-  private final ADIS16448_IMU m_imu = new ADIS16448_IMU();
-  private SimDeviceSim m_simulatedGyro;
-  private SimDouble m_simulatedGyroAngle;
-
-  // Timer for gripper control
-  private final Timer gripperTimer = new Timer();
-
-  // For notifications
-  private String lastGripperState = "Stopped";
-
-  // Simulation-related fields
-  private final Field2d m_field = new Field2d();
-  private Pose3d m_pose = new Pose3d();
-  private Translation3d m_velocity = new Translation3d();
-  private Rotation3d m_rotation = new Rotation3d();
-
-  // Publishers for AdvantageScope
-  private StructPublisher < Pose3d > m_posePublisher;
-  private StructArrayPublisher < Pose3d > m_poseArrayPublisher;
-
+  
+  // Subsystems
+  private final DriveSubsystem m_driveSubsystem = new DriveSubsystem();
+  private final GripperSubsystem m_gripperSubsystem = new GripperSubsystem();
+  private final SimulationSubsystem m_simulationSubsystem = new SimulationSubsystem();
+  
   // Toggle for pool-relative control
   private boolean m_poolRelative = false;
   private NetworkTableEntry m_poolRelativeToggle;
 
-  public Robot() {
-    // Set up thrusters in the SendableRegistry for debugging
-    SendableRegistry.addChild(m_leftFront45, "LeftFront45");
-    SendableRegistry.addChild(m_leftRear45, "LeftRear45");
-    SendableRegistry.addChild(m_rightFront45, "RightFront45");
-    SendableRegistry.addChild(m_rightRear45, "RightRear45");
-    SendableRegistry.addChild(m_leftFrontForward, "LeftFrontForward");
-    SendableRegistry.addChild(m_leftRearForward, "LeftRearForward");
-    SendableRegistry.addChild(m_rightFrontForward, "RightFrontForward");
-    SendableRegistry.addChild(m_rightRearForward, "RightRearForward");
-  }
-
+  // Field for visualization
+  private final Field2d m_field = new Field2d();
+  
   @Override
   public void robotInit() {
     // Webserver for Elastic automatic layout downloading
     WebServer.start(5800, Filesystem.getDeployDirectory().getPath());
+    
     // Initialize simulation visualization
     SmartDashboard.putData("Field", m_field);
-    SendableRegistry.addChild(m_newtonGripper, "NewtonGripper");
-    if (isSimulation()) {
-      m_simulatedGyro = new SimDeviceSim("Gyro:ADXRS450");
-      m_simulatedGyroAngle = m_simulatedGyro.getDouble("Angle");
-    }
-
-    // Initialize AdvantageScope publishers
-    m_posePublisher = NetworkTableInstance.getDefault().getStructTopic("RobotPose", Pose3d.struct).publish();
-    m_poseArrayPublisher = NetworkTableInstance.getDefault().getStructArrayTopic("RobotPoseArray", Pose3d.struct).publish();
-
-    // Calibrate the gyro on startup
-    m_imu.calibrate();
-    Elastic.sendNotification(new Elastic.Notification().withLevel(Elastic.Notification.NotificationLevel.INFO).withTitle("Gyro Calibration").withDescription("Gyro calibrating on startup.").withDisplaySeconds(5.0));
-
-    // Add pool-relative toggle to Elastic
+    
+    // Initialize pool-relative toggle
     m_poolRelativeToggle = SmartDashboard.getEntry("PoolRelative");
     m_poolRelativeToggle.setBoolean(m_poolRelative);
-
-    // Initialize the gripper status field in SmartDashboard for our Elastic
-    SmartDashboard.putString("Gripper Status", lastGripperState);
-
-    // Start the gripper timer
-    gripperTimer.reset();
-    gripperTimer.start();
-  }
-
-  @Override
-  public void teleopPeriodic() {
-    // Teleop control logic here
-    // Update simulation state and AdvantageScope publishers
-    // Get toggle state from Elastic
-    m_poolRelative = m_poolRelativeToggle.getBoolean(false);
-
-    // Read controller inputs with deadband applied
-    double forward = applyDeadband( - m_controller.getLeftY(), 0.1); // Forward/backward
-    double strafe = applyDeadband( - m_controller.getLeftX(), 0.1); // Left/right
-    double vertical = applyDeadband(m_controller.getRightY(), 0.1); // Up/down
-    double yaw = applyDeadband(m_controller.getRightX(), 0.1); // Yaw rotation
-    double roll = (m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis()); // Analog roll control
-    // Pitch control using bumpers
-    double pitch = 0.0;
-    if (m_controller.getRightBumperButton()) {
-      pitch += 0.5; // Adjust pitch forward (positive value)
-    }
-    if (m_controller.getLeftBumperButton()) {
-      pitch -= 0.5; // Adjust pitch backward (negative value)
-    }
-
-    // Field-relative transformation
-    double poolX = forward;
-    double poolY = strafe;
-    double poolZ = vertical;
-
-    if (m_poolRelative) {
-      // Get IMU angles
-      double yawAngle = Math.toRadians(m_imu.getAngle()); // Yaw (rotation around Z)
-      double pitchAngle = Math.toRadians(m_imu.getGyroAngleY()); // Pitch (rotation around X)
-      double rollAngle = Math.toRadians(m_imu.getGyroAngleX()); // Roll (rotation around Y)
-      // Calculate rotation matrix components
-      double cosYaw = Math.cos(yawAngle);
-      double sinYaw = Math.sin(yawAngle);
-      double cosPitch = Math.cos(pitchAngle);
-      double sinPitch = Math.sin(pitchAngle);
-      double cosRoll = Math.cos(rollAngle);
-      double sinRoll = Math.sin(rollAngle);
-
-      // Transformation for pool-relative controls
-      double rotatedX = forward * (cosYaw * cosPitch) + strafe * (cosYaw * sinPitch * sinRoll - sinYaw * cosRoll) + vertical * (cosYaw * sinPitch * cosRoll + sinYaw * sinRoll);
-      double rotatedY = forward * (sinYaw * cosPitch) + strafe * (sinYaw * sinPitch * sinRoll + cosYaw * cosRoll) + vertical * (sinYaw * sinPitch * cosRoll - cosYaw * sinRoll);
-      double rotatedZ = forward * ( - sinPitch) + strafe * (cosPitch * sinRoll) + vertical * (cosPitch * cosRoll);
-
-      poolX = rotatedX;
-      poolY = rotatedY;
-      poolZ = rotatedZ;
-    }
-
-    // Set power to thrusters for 3D movement
-    m_leftFront45.set(poolY + poolX);
-    m_leftRear45.set( - poolY + poolX);
-    m_rightFront45.set(poolY - poolX);
-    m_rightRear45.set( - poolY - poolX);
-
-    // Vertical, pitch, roll, and yaw control
-    m_leftFrontForward.set(poolZ + roll + yaw + pitch);
-    m_leftRearForward.set(poolZ - roll + yaw - pitch);
-    m_rightFrontForward.set(poolZ + roll - yaw + pitch);
-    m_rightRearForward.set(poolZ - roll - yaw - pitch);
     
-    // Control the Newton gripper
-    Elastic.Notification notification = new Elastic.Notification();
-
-    String currentGripperState = "Stopped";
-    if (m_controller.getAButton()) {
-      // Open the gripper for 4 seconds
-      if (gripperTimer.get() >= 4.0) {
-        m_newtonGripper.set(0.0);
-      } else {
-        m_newtonGripper.set(1.0); // Full forward power (open)
-        currentGripperState = "Opening";
-        gripperTimer.reset();
-        gripperTimer.start();
-      }
-    } else if (m_controller.getBButtonPressed()) {
-      // Close the gripper for 4 seconds
-      m_newtonGripper.set(-1.0); // Full reverse power (close)
-      currentGripperState = "Closing";
-      gripperTimer.reset();
-      gripperTimer.start();
-    } else if (gripperTimer.get() >= 4.0) {
-      // Stop the gripper after 4 seconds
-      m_newtonGripper.set(0.0);
-      gripperTimer.stop();
-    }
-
-    // Notification logic for Newton gripper to send the elastic notifications on state change
-    if (!currentGripperState.equals(lastGripperState)) {
-      Elastic.sendNotification(notification.withLevel(Elastic.Notification.NotificationLevel.INFO).withTitle("Gripper " + currentGripperState).withDescription("Power set to: " + m_newtonGripper.getVoltage()).withDisplaySeconds(5.0));
-      lastGripperState = currentGripperState;
-
-      // Update the gripper status on SmartDashboard for Elastic
-      SmartDashboard.putString("Gripper Status", currentGripperState);
-    }
-
-    // Gyro control and notifications for calibration and reset
-    if (m_controller.getXButtonPressed()) {
-      m_imu.calibrate();
-      Elastic.sendNotification(new Elastic.Notification().withLevel(Elastic.Notification.NotificationLevel.WARNING).withTitle("Gyro Calibration").withDescription("Gyro calibrating as requested.").withDisplaySeconds(5.0));
-    }
-
-    if (m_controller.getYButtonPressed()) {
-      m_imu.reset();
-      Elastic.sendNotification(new Elastic.Notification().withLevel(Elastic.Notification.NotificationLevel.INFO).withTitle("Gyro Reset").withDescription("Gyro heading reset to zero.").withDisplaySeconds(5.0));
-    }
-
-    // Update simulation with pitch, roll, and yaw control inputs
-    updateSimulation(poolX, poolY, vertical, yaw, pitch);
+    // Initialize the gripper status field in SmartDashboard for Elastic
+    SmartDashboard.putString("Gripper Status", "Stopped");
+    
+    // Set default commands
+    configureDefaultCommands();
+    
+    // Configure button bindings
+    configureButtonBindings();
+    
+    // Calibrate the gyro on startup
+    m_driveSubsystem.calibrateGyro();
+    Elastic.sendNotification(
+        new Elastic.Notification()
+            .withLevel(Elastic.Notification.NotificationLevel.INFO)
+            .withTitle("Gyro Calibration")
+            .withDescription("Gyro calibrating on startup.")
+            .withDisplaySeconds(5.0)
+    );
   }
 
+  private void configureDefaultCommands() {
+    // Set the default drive command that will run whenever no other command is using the drive subsystem
+    m_driveSubsystem.setDefaultCommand(new DefaultDriveCommand(
+        m_driveSubsystem,
+        m_simulationSubsystem,
+        () -> -applyDeadband(m_controller.getLeftY(), 0.1),  // Forward/backward
+        () -> -applyDeadband(m_controller.getLeftX(), 0.1),  // Left/right
+        () -> applyDeadband(m_controller.getRightY(), 0.1),  // Up/down
+        () -> applyDeadband(m_controller.getRightX(), 0.1),  // Yaw rotation
+        () -> m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis(), // Roll
+        () -> {
+            // Calculate pitch based on bumpers
+            double pitch = 0.0;
+            if (m_controller.getRightBumperButton()) {
+                pitch += 0.5;
+            }
+            if (m_controller.getLeftBumperButton()) {
+                pitch -= 0.5;
+            }
+            return pitch;
+        },
+        () -> m_poolRelativeToggle.getBoolean(false)
+    ));
+    
+    // Set default simulation command
+    m_simulationSubsystem.setDefaultCommand(
+        new RunCommand(() -> {
+            // Update the field visualization with the latest pose
+            m_field.setRobotPose(m_simulationSubsystem.getPose().toPose2d());
+        }, m_simulationSubsystem)
+    );
+  }
+  
+  private void configureButtonBindings() {
+    // X button - Calibrate gyro
+    new edu.wpi.first.wpilibj2.command.button.JoystickButton(m_controller, XboxController.Button.kX.value)
+        .onTrue(new InstantCommand(() -> {
+            m_driveSubsystem.calibrateGyro();
+            Elastic.sendNotification(
+                new Elastic.Notification()
+                    .withLevel(Elastic.Notification.NotificationLevel.WARNING)
+                    .withTitle("Gyro Calibration")
+                    .withDescription("Gyro calibrating as requested.")
+                    .withDisplaySeconds(5.0)
+            );
+        }));
+    
+    // Y button - Reset gyro
+    new edu.wpi.first.wpilibj2.command.button.JoystickButton(m_controller, XboxController.Button.kY.value)
+        .onTrue(new InstantCommand(() -> {
+            m_driveSubsystem.resetGyro();
+            Elastic.sendNotification(
+                new Elastic.Notification()
+                    .withLevel(Elastic.Notification.NotificationLevel.INFO)
+                    .withTitle("Gyro Reset")
+                    .withDescription("Gyro heading reset to zero.")
+                    .withDisplaySeconds(5.0)
+            );
+        }));
+    
+    // A button - Open gripper
+    new edu.wpi.first.wpilibj2.command.button.JoystickButton(m_controller, XboxController.Button.kA.value)
+        .onTrue(new OpenGripperCommand(m_gripperSubsystem));
+    
+    // B button - Close gripper
+    new edu.wpi.first.wpilibj2.command.button.JoystickButton(m_controller, XboxController.Button.kB.value)
+        .onTrue(new CloseGripperCommand(m_gripperSubsystem));
+  }
+  
   /**
    * Applies a deadband to the joystick input to filter out small, unintended movements.
    *
@@ -241,99 +159,47 @@ public class Robot extends LoggedRobot {
     }
   }
 
-  /**
-   * Updates the simulation state based on the current inputs and includes water resistance.
-   *
-   * @param x      Forward/backward input (positive forward)
-   * @param y      Left/right input (positive right)
-   * @param z      Up/down input (positive up)
-   * @param rotate Rotation input (yaw control)
-   * @param pitch  Pitch control input (positive forward)
-   */
-  private void updateSimulation(double x, double y, double z, double rotate, double pitch) {
-    // Simulation time step (20ms)
-    double deltaTime = 0.02;
-
-    // Water resistance coefficients (drag constants)
-    final double dragCoefficientLinear = 2.9; // Linear drag for x, y, z
-    final double dragCoefficientRotational = 2.8; // Rotational drag for yaw (z)
-    // Convert robot-relative inputs to global frame using the robot's current rotation (yaw)
-    Translation3d robotRelativeForce = new Translation3d(x, y, z);
-    Translation3d globalForce = robotRelativeForce.rotateBy(m_pose.getRotation());
-
-    // Calculate rotational force (yaw is unaffected by the translation forces)
-    double rotationalForce = rotate;
-    double pitchForce = pitch;
-
-    // Apply water resistance (drag force reduces velocity) 
-    Translation3d dragForce = new Translation3d( - dragCoefficientLinear * m_velocity.getX(), -dragCoefficientLinear * m_velocity.getY(), -dragCoefficientLinear * m_velocity.getZ());
-    double rotationalDragForce = -dragCoefficientRotational * m_rotation.getZ();
-
-    // Update velocity with applied forces and drag (linear and rotational)
-    m_velocity = new Translation3d(
-    m_velocity.getX() + (globalForce.getX() + dragForce.getX()) * deltaTime, m_velocity.getY() + (globalForce.getY() + dragForce.getY()) * deltaTime, m_velocity.getZ() + (globalForce.getZ() + dragForce.getZ()) * deltaTime);
-
-    // Update rotation rates with applied forces and drag 
-    m_rotation = new Rotation3d(
-    m_rotation.getX() + pitchForce * deltaTime, m_rotation.getY(), m_rotation.getZ() + (rotationalForce + rotationalDragForce) * deltaTime);
-
-    // Update pose (position and orientation) 
-    m_pose = new Pose3d(
-    m_pose.getTranslation().plus(m_velocity.times(deltaTime)), new Rotation3d(
-    m_pose.getRotation().getX() + m_rotation.getX() * deltaTime, m_pose.getRotation().getY() + m_rotation.getY() * deltaTime, m_pose.getRotation().getZ() + m_rotation.getZ() * deltaTime));
-
-    // Update the simulation visualization for 2d
-    m_field.setRobotPose(m_pose.toPose2d());
-
-    // Publish the updated pose to AdvantageScope 
-    Pose3d poseA = m_pose;
-    m_posePublisher.set(poseA);
-    m_poseArrayPublisher.set(new Pose3d[] {
-      poseA
-    });
+  @Override
+  public void robotPeriodic() {
+    // Run the CommandScheduler - this is required for the command-based framework
+    CommandScheduler.getInstance().run();
+    
+    // Update pool-relative mode from dashboard
+    m_poolRelative = m_poolRelativeToggle.getBoolean(false);
   }
 
   @Override
   public void simulationPeriodic() {
-    // Update simulation telemetry and simulated gyro
-    SmartDashboard.putString("Pose", m_pose.toString());
-    SmartDashboard.putString("Velocity", m_velocity.toString());
-    SmartDashboard.putString("Rotation", m_rotation.toString());
-
-    // Update simulated gyro
-    if (m_simulatedGyroAngle != null) {
-      double currentAngle = m_simulatedGyroAngle.get();
-      double deltaTime = 0.02; // 20ms periodic update
-      double newAngle = currentAngle + m_rotation.getZ() * deltaTime * (180 / Math.PI); // Convert radians/s to degrees/s
-      m_simulatedGyroAngle.set(newAngle);
-    }
+    // Run the simulation periodic logic in the simulation subsystem
+    m_simulationSubsystem.updateSimulation();
   }
 
   @Override
   public void autonomousInit() {
-    // Autonomous initialization code here
+    // TODO: Add autonomous commands if needed
   }
 
   @Override
-  public void autonomousPeriodic() {
-    // Autonomous periodic code here
+  public void teleopInit() {
+    // Nothing specific needed here as default commands handle teleop
   }
 
   @Override
   public void testInit() {
-    // Test initialization code here
+    // Cancel all running commands
+    CommandScheduler.getInstance().cancelAll();
+    
+    // Schedule the test command
+    CommandScheduler.getInstance().schedule(new RunCommand(() -> {
+        m_driveSubsystem.testThrusters();
+        m_gripperSubsystem.testGripper();
+    }));
   }
 
   @Override
-  public void testPeriodic() {
-    m_leftFront45.set(0.5);
-    m_leftRear45.set(0.5);
-    m_rightFront45.set(0.5);
-    m_rightRear45.set(0.5);
-    m_leftFrontForward.set(0.5);
-    m_leftRearForward.set(0.5);
-    m_rightFrontForward.set(0.5);
-    m_rightRearForward.set(0.5);
-    m_newtonGripper.set(0.5);
+  public void disabledInit() {
+    // Stop all motors when disabled
+    m_driveSubsystem.stopAll();
+    m_gripperSubsystem.stop();
   }
 }
