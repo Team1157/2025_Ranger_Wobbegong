@@ -2,8 +2,19 @@
 package frc.robot;
 
 import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.inputs.LoggedPowerDistribution;
+import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
+
 import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.DoubleArrayPublisher;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -18,6 +29,7 @@ import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.GripperSubsystem;
 import frc.robot.subsystems.SimulationSubsystem;
 import frc.robot.util.Elastic;
+import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 
 /**
  * This class controls an underwater robot with 8 BlueRobotics T200 thrusters configured for full 3D 
@@ -43,8 +55,38 @@ public class Robot extends LoggedRobot {
   // Field for visualization
   private final Field2d m_field = new Field2d();
   
+  // Publishers for AdvantageScope
+  private BooleanPublisher m_poolRelativePublisher;
+  private DoubleArrayPublisher m_controllerInputsPublisher;
+  private StringPublisher m_robotStatePublisher;
+  private DoublePublisher m_loopTimePublisher;
+  private Timer m_loopTimer = new Timer();
+  
   @Override
   public void robotInit() {
+    // Set up AdvantageKit logging
+    Logger.recordMetadata("ProjectName", "Underwater Robot");
+    Logger.recordMetadata("BuildDate", "2025-04-01_" + System.currentTimeMillis());
+    Logger.recordMetadata("GitSHA", "Not set up");
+    Logger.recordMetadata("GitDate", "Not set up");
+    Logger.recordMetadata("GitBranch", "Not set up");
+    Logger.recordMetadata("UseMatlab", "False");
+    
+    if (isReal()) {
+      Logger.addDataReceiver(new WPILOGWriter("/home/lvuser/logs/"));
+      Logger.addDataReceiver(new NT4Publisher());
+      // Log power distribution
+      LoggedPowerDistribution.getInstance(0, ModuleType.kRev);
+    } else {
+      Logger.addDataReceiver(new NT4Publisher());
+    }
+
+    // Start logging
+    Logger.start();
+    
+    // Initialize NetworkTable publishers for AdvantageScope
+    initializeNetworkTablePublishers();
+    
     // Webserver for Elastic automatic layout downloading
     WebServer.start(5800, Filesystem.getDeployDirectory().getPath());
     
@@ -73,6 +115,21 @@ public class Robot extends LoggedRobot {
             .withDescription("Gyro calibrating on startup.")
             .withDisplaySeconds(5.0)
     );
+    
+    // Start loop timer
+    m_loopTimer.reset();
+    m_loopTimer.start();
+  }
+
+  private void initializeNetworkTablePublishers() {
+    // Get NetworkTable instance
+    NetworkTableInstance nt = NetworkTableInstance.getDefault();
+    
+    // Create publishers for various robot states
+    m_poolRelativePublisher = nt.getBooleanTopic("/Robot/PoolRelative").publish();
+    m_controllerInputsPublisher = nt.getDoubleArrayTopic("/Robot/ControllerInputs").publish();
+    m_robotStatePublisher = nt.getStringTopic("/Robot/State").publish();
+    m_loopTimePublisher = nt.getDoubleTopic("/Robot/LoopTime").publish();
   }
 
   private void configureDefaultCommands() {
@@ -161,12 +218,51 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void robotPeriodic() {
+    // Calculate loop time
+    double loopTime = m_loopTimer.get();
+    m_loopTimer.reset();
+    
     // Run the CommandScheduler - this is required for the command-based framework
     CommandScheduler.getInstance().run();
     
     // Update pool-relative mode from dashboard
     m_poolRelative = m_poolRelativeToggle.getBoolean(false);
+    
+    // Log data to NetworkTables for AdvantageScope
+    updateTelemetry(loopTime);
   }
+  
+  private void updateTelemetry(double loopTime) {
+    // Publish loop time
+    m_loopTimePublisher.set(loopTime);
+    
+    // Publish pool-relative state
+    m_poolRelativePublisher.set(m_poolRelative);
+    
+    // Publish controller inputs as an array
+    m_controllerInputsPublisher.set(new double[] {
+        m_controller.getLeftX(),
+        m_controller.getLeftY(),
+        m_controller.getRightX(),
+        m_controller.getRightY(),
+        m_controller.getLeftTriggerAxis(),
+        m_controller.getRightTriggerAxis(),
+        m_controller.getRightBumper() ? 1.0 : 0.0,
+        m_controller.getLeftBumper() ? 1.0 : 0.0
+    });
+    
+    // Publish robot state
+    String currentState = "Disabled";
+    if (isAutonomous()) {
+        currentState = "Autonomous";
+    } else if (isTeleop()) {
+        currentState = "Teleop";
+    } else if (isTest()) {
+        currentState = "Test";
+    }
+    m_robotStatePublisher.set(currentState);
+    
+    }
 
   @Override
   public void simulationPeriodic() {
@@ -176,16 +272,19 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void autonomousInit() {
+    m_robotStatePublisher.set("Autonomous");
     // TODO: Add autonomous commands if needed
   }
 
   @Override
   public void teleopInit() {
+    m_robotStatePublisher.set("Teleop");
     // Nothing specific needed here as default commands handle teleop
   }
 
   @Override
   public void testInit() {
+    m_robotStatePublisher.set("Test");
     // Cancel all running commands
     CommandScheduler.getInstance().cancelAll();
     
@@ -198,6 +297,7 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void disabledInit() {
+    m_robotStatePublisher.set("Disabled");
     // Stop all motors when disabled
     m_driveSubsystem.stopAll();
     m_gripperSubsystem.stop();
