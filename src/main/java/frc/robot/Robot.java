@@ -273,7 +273,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void autonomousInit() {
     m_robotStatePublisher.set("Autonomous");
-    // TODO: Add autonomous commands if needed
+    // TODO: Add autonomous commands cause silly
   }
 
   @Override
