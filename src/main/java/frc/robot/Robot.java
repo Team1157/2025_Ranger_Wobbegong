@@ -3,7 +3,6 @@ package frc.robot;
 
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
-import org.littletonrobotics.junction.inputs.LoggedPowerDistribution;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
 
@@ -13,6 +12,7 @@ import edu.wpi.first.networktables.DoubleArrayPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.networktables.BooleanPublisher;
+
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
@@ -22,14 +22,16 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.net.WebServer;
+
+import frc.robot.util.Elastic;
+
+// My special sauce
 import frc.robot.commands.CloseGripperCommand;
 import frc.robot.commands.DefaultDriveCommand;
 import frc.robot.commands.OpenGripperCommand;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.GripperSubsystem;
 import frc.robot.subsystems.SimulationSubsystem;
-import frc.robot.util.Elastic;
-import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 
 /**
  * This class controls an underwater robot with 8 BlueRobotics T200 thrusters configured for full 3D 
@@ -65,7 +67,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void robotInit() {
     // Set up AdvantageKit logging
-    Logger.recordMetadata("ProjectName", "Underwater Robot");
+    Logger.recordMetadata("ProjectName", "Tie Fighter, The 2025 BHS MATE ROV");
     Logger.recordMetadata("BuildDate", "2025-04-01_" + System.currentTimeMillis());
     Logger.recordMetadata("GitSHA", "Not set up");
     Logger.recordMetadata("GitDate", "Not set up");
@@ -75,8 +77,7 @@ public class Robot extends LoggedRobot {
     if (isReal()) {
       Logger.addDataReceiver(new WPILOGWriter("/home/lvuser/logs/"));
       Logger.addDataReceiver(new NT4Publisher());
-      // Log power distribution
-      LoggedPowerDistribution.getInstance(0, ModuleType.kRev);
+      
     } else {
       Logger.addDataReceiver(new NT4Publisher());
     }

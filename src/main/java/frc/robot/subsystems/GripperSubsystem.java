@@ -5,12 +5,12 @@ import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.util.BlueRoboticsBasicESC;
+import frc.robot.util.BlueRoboticsNewton;
 import frc.robot.util.Elastic;
 
 public class GripperSubsystem extends SubsystemBase {
     // Newton gripper
-    private final BlueRoboticsBasicESC m_newtonGripper = new BlueRoboticsBasicESC(9);
+    private final BlueRoboticsNewton m_newtonGripper = new BlueRoboticsNewton(9);
     
     // Timer for gripper control
     private final Timer m_gripperTimer = new Timer();
