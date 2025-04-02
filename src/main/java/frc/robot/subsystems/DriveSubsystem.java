@@ -15,14 +15,14 @@ import frc.robot.util.BlueRoboticsBasicESC;
 
 public class DriveSubsystem extends SubsystemBase {
     // Thruster definitions
-    private final BlueRoboticsBasicESC m_leftFront45 = new BlueRoboticsBasicESC(0);
-    private final BlueRoboticsBasicESC m_leftRear45 = new BlueRoboticsBasicESC(1);
-    private final BlueRoboticsBasicESC m_rightFront45 = new BlueRoboticsBasicESC(2);
+    private final BlueRoboticsBasicESC m_leftFront45 = new BlueRoboticsBasicESC(2);
+    private final BlueRoboticsBasicESC m_leftRear45 = new BlueRoboticsBasicESC(5);
+    private final BlueRoboticsBasicESC m_rightFront45 = new BlueRoboticsBasicESC(7);
     private final BlueRoboticsBasicESC m_rightRear45 = new BlueRoboticsBasicESC(3);
-    private final BlueRoboticsBasicESC m_leftFrontForward = new BlueRoboticsBasicESC(4);
-    private final BlueRoboticsBasicESC m_leftRearForward = new BlueRoboticsBasicESC(5);
-    private final BlueRoboticsBasicESC m_rightFrontForward = new BlueRoboticsBasicESC(6);
-    private final BlueRoboticsBasicESC m_rightRearForward = new BlueRoboticsBasicESC(7);
+    private final BlueRoboticsBasicESC m_leftFrontForward = new BlueRoboticsBasicESC(6);
+    private final BlueRoboticsBasicESC m_leftRearForward = new BlueRoboticsBasicESC(4);
+    private final BlueRoboticsBasicESC m_rightFrontForward = new BlueRoboticsBasicESC(1);
+    private final BlueRoboticsBasicESC m_rightRearForward = new BlueRoboticsBasicESC(0);
     
     // Gyro definition
     private final ADIS16448_IMU m_imu = new ADIS16448_IMU();
