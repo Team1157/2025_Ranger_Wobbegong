@@ -168,7 +168,7 @@ public class DriveSubsystem extends SubsystemBase {
         
         // Set power to thrusters for 3D movement
         m_leftFront45.set(poolY + poolX);
-        m_leftRear45.set(-poolY + poolX);
+        m_leftRear45.set(-(-poolY + poolX));
         m_rightFront45.set(poolY - poolX);
         m_rightRear45.set(-poolY - poolX);
 
