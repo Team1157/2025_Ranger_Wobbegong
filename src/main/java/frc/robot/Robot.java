@@ -13,7 +13,6 @@ import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.networktables.BooleanPublisher;
 
-import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -21,7 +20,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
-import edu.wpi.first.net.WebServer;
 
 import frc.robot.util.Elastic;
 
@@ -31,6 +29,7 @@ import frc.robot.commands.DefaultDriveCommand;
 import frc.robot.commands.OpenGripperCommand;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.GripperSubsystem;
+import frc.robot.subsystems.PhSensorSubsystem;
 import frc.robot.subsystems.SimulationSubsystem;
 
 /**
@@ -49,6 +48,7 @@ public class Robot extends LoggedRobot {
   private final DriveSubsystem m_driveSubsystem = new DriveSubsystem();
   private final GripperSubsystem m_gripperSubsystem = new GripperSubsystem();
   private final SimulationSubsystem m_simulationSubsystem = new SimulationSubsystem();
+  private final PhSensorSubsystem m_phSensorSubsystem = new PhSensorSubsystem(1);
   
   // Toggle for pool-relative control
   private boolean m_poolRelative = false;
@@ -67,7 +67,7 @@ public class Robot extends LoggedRobot {
   @Override
   public void robotInit() {
     // Set up AdvantageKit logging
-    Logger.recordMetadata("ProjectName", "Tie Fighter, The 2025 BHS MATE ROV");
+    Logger.recordMetadata("ProjectName", "Wobbegong The 2025 BHS MATE ROV");
     Logger.recordMetadata("BuildDate", "2025-04-01_" + System.currentTimeMillis());
     Logger.recordMetadata("GitSHA", "Not set up");
     Logger.recordMetadata("GitDate", "Not set up");
@@ -87,10 +87,7 @@ public class Robot extends LoggedRobot {
     
     // Initialize NetworkTable publishers for AdvantageScope
     initializeNetworkTablePublishers();
-    
-    // Webserver for Elastic automatic layout downloading
-    WebServer.start(5800, Filesystem.getDeployDirectory().getPath());
-    
+        
     // Initialize simulation visualization
     SmartDashboard.putData("Field", m_field);
     
@@ -239,7 +236,9 @@ public class Robot extends LoggedRobot {
     
     // Publish pool-relative state
     m_poolRelativePublisher.set(m_poolRelative);
-    
+    // Publish pH to nt
+    SmartDashboard.putNumber("pH Value", m_phSensorSubsystem.getPh());
+
     // Publish controller inputs as an array
     m_controllerInputsPublisher.set(new double[] {
         m_controller.getLeftX(),
@@ -274,7 +273,6 @@ public class Robot extends LoggedRobot {
   @Override
   public void autonomousInit() {
     m_robotStatePublisher.set("Autonomous");
-    // TODO: Add autonomous commands cause silly
   }
 
   @Override
