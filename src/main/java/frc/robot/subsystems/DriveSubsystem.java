@@ -147,7 +147,7 @@ public class DriveSubsystem extends SubsystemBase {
         SmartDashboard.putNumber("Roll", m_imu.getGyroAngleX());
     }
     
-    /**
+   /**
      * Drive the robot using raw values.
      *
      * @param poolX    Forward/backward movement
@@ -157,38 +157,37 @@ public class DriveSubsystem extends SubsystemBase {
      * @param pitch    Pitch rotation
      * @param roll     Roll rotation
      */
-    public void drive(double poolX, double poolY, double poolZ, double yaw, double pitch, double roll) {
-        // Store current values for logging
-        m_currentX = poolX;
-        m_currentY = poolY;
-        m_currentZ = poolZ;
-        m_currentYaw = yaw;
-        m_currentPitch = pitch;
-        m_currentRoll = roll;
-        
-        // Set power to thrusters for 3D movement
-        m_leftFront45.set(poolY + poolX);
-        m_leftRear45.set(-(-poolY + poolX));
-        m_rightFront45.set(poolY - poolX);
-        m_rightRear45.set(-poolY - poolX);
-
-        // Vertical, pitch, roll, and yaw control
-        m_leftFrontForward.set(poolZ + roll + yaw + pitch);
-        m_leftRearForward.set(poolZ - roll + yaw - pitch);
-        m_rightFrontForward.set(poolZ + roll - yaw + pitch);
-        m_rightRearForward.set(poolZ - roll - yaw - pitch);
-        
-        // Log thruster powers to AdvantageKit as they're set
-        Logger.recordOutput("Drive/CommandedPowers/LeftFront45", poolY + poolX);
-        Logger.recordOutput("Drive/CommandedPowers/LeftRear45", -poolY + poolX);
-        Logger.recordOutput("Drive/CommandedPowers/RightFront45", poolY - poolX);
-        Logger.recordOutput("Drive/CommandedPowers/RightRear45", -poolY - poolX);
-        Logger.recordOutput("Drive/CommandedPowers/LeftFrontForward", poolZ + roll + yaw + pitch);
-        Logger.recordOutput("Drive/CommandedPowers/LeftRearForward", poolZ - roll + yaw - pitch);
-        Logger.recordOutput("Drive/CommandedPowers/RightFrontForward", poolZ + roll - yaw + pitch);
-        Logger.recordOutput("Drive/CommandedPowers/RightRearForward", poolZ - roll - yaw - pitch);
-    }
+public void drive(double poolX, double poolY, double poolZ, double yaw, double pitch, double roll) {
+    // Store current values for logging
+    m_currentX = poolX;
+    m_currentY = poolY;
+    m_currentZ = poolZ;
+    m_currentYaw = yaw;
+    m_currentPitch = pitch;
+    m_currentRoll = roll;
     
+    m_leftFront45.set(poolY + poolX + yaw);      
+    m_leftRear45.set(-(-poolY + poolX + yaw));   
+    m_rightFront45.set(poolY - poolX - yaw);     
+    m_rightRear45.set(-poolY - poolX - yaw);     
+    
+    // Vertical, pitch, and roll control (no yaw component here anymore cause im bad at math)
+    m_leftFrontForward.set(poolZ + roll + pitch);
+    m_leftRearForward.set(poolZ - roll - pitch);
+    m_rightFrontForward.set(poolZ + roll + pitch);
+    m_rightRearForward.set(poolZ - roll - pitch);
+    
+    // Log thruster powers to AdvantageKit as they're set
+    Logger.recordOutput("Drive/CommandedPowers/LeftFront45", poolY + poolX + yaw);
+    Logger.recordOutput("Drive/CommandedPowers/LeftRear45", -poolY + poolX + yaw);
+    Logger.recordOutput("Drive/CommandedPowers/RightFront45", poolY - poolX - yaw);
+    Logger.recordOutput("Drive/CommandedPowers/RightRear45", -poolY - poolX - yaw);
+    Logger.recordOutput("Drive/CommandedPowers/LeftFrontForward", poolZ + roll + pitch);
+    Logger.recordOutput("Drive/CommandedPowers/LeftRearForward", poolZ - roll - pitch);
+    Logger.recordOutput("Drive/CommandedPowers/RightFrontForward", poolZ + roll + pitch);
+    Logger.recordOutput("Drive/CommandedPowers/RightRearForward", poolZ - roll - pitch);
+}
+
     /**
      * Calculate pool-relative controls based on IMU data.
      *
