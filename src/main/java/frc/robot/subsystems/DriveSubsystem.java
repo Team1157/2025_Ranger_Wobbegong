@@ -172,10 +172,10 @@ public void drive(double poolX, double poolY, double poolZ, double yaw, double p
     m_rightRear45.set(.45*(-poolY - poolX - yaw));     
     
     // Vertical, pitch, and roll control (no yaw component here anymore cause im bad at math)
-    m_leftFrontForward.set(poolZ + roll + pitch);
-    m_leftRearForward.set(poolZ - roll - pitch);
-    m_rightFrontForward.set(poolZ + roll + pitch);
-    m_rightRearForward.set(poolZ - roll - pitch);
+    m_leftFrontForward.set(.45*(poolZ + roll + pitch));
+    m_leftRearForward.set(.45*(poolZ - roll - pitch));
+    m_rightFrontForward.set(.45*(poolZ + roll + pitch));
+    m_rightRearForward.set(.45*(poolZ - roll - pitch));
     
     // Log thruster powers to AdvantageKit as they're set
     Logger.recordOutput("Drive/CommandedPowers/LeftFront45", poolY + poolX + yaw);
