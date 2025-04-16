@@ -166,10 +166,10 @@ public void drive(double poolX, double poolY, double poolZ, double yaw, double p
     m_currentPitch = pitch;
     m_currentRoll = roll;
     
-    m_leftFront45.set(poolY + poolX + yaw);      
-    m_leftRear45.set(-(-poolY + poolX + yaw));   
-    m_rightFront45.set(poolY - poolX - yaw);     
-    m_rightRear45.set(-poolY - poolX - yaw);     
+    m_leftFront45.set(.45*(poolY + poolX + yaw));      
+    m_leftRear45.set(-.45*(-poolY + poolX + yaw));   
+    m_rightFront45.set(.45*(poolY - poolX - yaw));     
+    m_rightRear45.set(.45*(-poolY - poolX - yaw));     
     
     // Vertical, pitch, and roll control (no yaw component here anymore cause im bad at math)
     m_leftFrontForward.set(poolZ + roll + pitch);
