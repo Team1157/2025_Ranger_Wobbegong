@@ -29,7 +29,7 @@ import frc.robot.commands.DefaultDriveCommand;
 import frc.robot.commands.OpenGripperCommand;
 import frc.robot.subsystems.DriveSubsystem;
 import frc.robot.subsystems.GripperSubsystem;
-import frc.robot.subsystems.PhSensorSubsystem;
+import frc.robot.subsystems.SensorSubsystem;
 import frc.robot.subsystems.SimulationSubsystem;
 
 /**
@@ -48,7 +48,7 @@ public class Robot extends LoggedRobot {
   private final DriveSubsystem m_driveSubsystem = new DriveSubsystem();
   private final GripperSubsystem m_gripperSubsystem = new GripperSubsystem();
   private final SimulationSubsystem m_simulationSubsystem = new SimulationSubsystem();
-  private final PhSensorSubsystem m_phSensorSubsystem = new PhSensorSubsystem(1);
+  private final SensorSubsystem m_phSensorSubsystem = new SensorSubsystem(1);
   
   // Toggle for pool-relative control
   private boolean m_poolRelative = false;
@@ -135,10 +135,10 @@ public class Robot extends LoggedRobot {
     m_driveSubsystem.setDefaultCommand(new DefaultDriveCommand(
         m_driveSubsystem,
         m_simulationSubsystem,
-        () -> -applyDeadband(m_controller.getLeftY(), 0.1),  // Forward/backward
-        () -> -applyDeadband(m_controller.getLeftX(), 0.1),  // Left/right
-        () -> applyDeadband(m_controller.getRightY(), 0.1),  // Up/down
-        () -> applyDeadband(m_controller.getRightX(), 0.1),  // Yaw rotation
+        () -> -applyDeadband(m_controller.getLeftY(), 0.15),  // Forward/backward
+        () -> -applyDeadband(m_controller.getLeftX(), 0.15),  // Left/right
+        () -> applyDeadband(m_controller.getRightY(), 0.15),  // Up/down
+        () -> applyDeadband(m_controller.getRightX(), 0.15),  // Yaw rotation
         () -> m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis(), // Roll
         () -> {
             // Calculate pitch based on bumpers
@@ -247,8 +247,8 @@ public class Robot extends LoggedRobot {
         m_controller.getRightY(),
         m_controller.getLeftTriggerAxis(),
         m_controller.getRightTriggerAxis(),
-        m_controller.getRightBumper() ? 1.0 : 0.0,
-        m_controller.getLeftBumper() ? 1.0 : 0.0
+        m_controller.getRightBumperButton() ? 1.0 : 0.0,
+        m_controller.getLeftBumperButton() ? 1.0 : 0.0
     });
     
     // Publish robot state

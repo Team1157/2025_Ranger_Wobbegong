@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import org.littletonrobotics.junction.Logger;
 
+import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.wpilibj.AnalogInput;
@@ -12,10 +13,10 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
  * Reads pH values from an analog input and provides logged data for monitoring the
  * one task with the waterbottle
  */
-public class PhSensorSubsystem extends SubsystemBase {
+public class SensorSubsystem extends SubsystemBase {
     // Hardware
     private final AnalogInput m_phSensor;
-    
+
     // pH calculation constants
     private static final double VOLTS_TO_PH_SLOPE = -0.0172; // This value may need calibration
     private static final double PH_CALIBRATION_OFFSET = 7.0; // Neutral pH at specified voltage
@@ -32,12 +33,12 @@ public class PhSensorSubsystem extends SubsystemBase {
     
     /**
      * 
-     * @param analogPort The analog input port the pH sensor is connected to
+     * @param pHSensorAnalogPort The analog input port the pH sensor is connected to
      */
-    public PhSensorSubsystem(int analogPort) {
+    public SensorSubsystem(int pHSensorAnalogPort) {
         // Initialize hardware
-        m_phSensor = new AnalogInput(analogPort);
-        
+        m_phSensor = new AnalogInput(pHSensorAnalogPort);
+        CameraServer.startAutomaticCapture();
         // Configure the analog input for better readings
         m_phSensor.setAverageBits(4); // Average 16 samples for noise reduction
         
