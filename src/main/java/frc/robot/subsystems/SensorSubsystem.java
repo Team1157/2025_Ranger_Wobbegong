@@ -5,6 +5,7 @@ import org.littletonrobotics.junction.Logger;
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.util.PixelFormat;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -42,6 +43,7 @@ public class SensorSubsystem extends SubsystemBase {
         UsbCamera camera = CameraServer.startAutomaticCapture();
         camera.setFPS(30);
         camera.setResolution(640, 40);
+        camera.setPixelFormat(PixelFormat.kMJPEG);
         // Configure the analog input for better readings
         m_phSensor.setAverageBits(4); // Average 16 samples for noise reduction
         
