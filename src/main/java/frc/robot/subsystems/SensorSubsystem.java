@@ -3,6 +3,7 @@ package frc.robot.subsystems;
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.wpilibj.AnalogInput;
@@ -38,7 +39,9 @@ public class SensorSubsystem extends SubsystemBase {
     public SensorSubsystem(int pHSensorAnalogPort) {
         // Initialize hardware
         m_phSensor = new AnalogInput(pHSensorAnalogPort);
-        CameraServer.startAutomaticCapture();
+        UsbCamera camera = CameraServer.startAutomaticCapture();
+        camera.setFPS(30);
+        camera.setResolution(640, 40);
         // Configure the analog input for better readings
         m_phSensor.setAverageBits(4); // Average 16 samples for noise reduction
         
