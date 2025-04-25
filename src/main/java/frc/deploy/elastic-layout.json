@@ -1,0 +1,238 @@
+{
+  "version": 1.0,
+  "grid_size": 128,
+  "tabs": [
+    {
+      "name": "Product Demo",
+      "grid_layout": {
+        "layouts": [],
+        "containers": [
+          {
+            "title": "Yaw",
+            "x": 0.0,
+            "y": 128.0,
+            "width": 256.0,
+            "height": 128.0,
+            "type": "Number Bar",
+            "properties": {
+              "topic": "/AdvantageKit/RealOutputs/Drive/IMU/Yaw",
+              "period": 0.033,
+              "data_type": "double",
+              "min_value": -360.0,
+              "max_value": 360.0,
+              "divisions": 5,
+              "inverted": false,
+              "orientation": "horizontal"
+            }
+          },
+          {
+            "title": "Pitch",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 256.0,
+            "height": 128.0,
+            "type": "Number Slider",
+            "properties": {
+              "topic": "/AdvantageKit/RealOutputs/Drive/IMU/Pitch",
+              "period": 0.033,
+              "data_type": "double",
+              "min_value": -360.0,
+              "max_value": 360.0,
+              "divisions": 5,
+              "update_continuously": false
+            }
+          },
+          {
+            "title": "Roll",
+            "x": 0.0,
+            "y": 256.0,
+            "width": 256.0,
+            "height": 128.0,
+            "type": "Number Bar",
+            "properties": {
+              "topic": "/AdvantageKit/RealOutputs/Drive/IMU/Roll",
+              "period": 0.033,
+              "data_type": "double",
+              "min_value": -360.0,
+              "max_value": 360.0,
+              "divisions": 5,
+              "inverted": false,
+              "orientation": "horizontal"
+            }
+          },
+          {
+            "title": "Demo Time Left",
+            "x": 256.0,
+            "y": 0.0,
+            "width": 384.0,
+            "height": 384.0,
+            "type": "Match Time",
+            "properties": {
+              "topic": "/AdvantageKit/DriverStation/MatchTime",
+              "period": 0.06,
+              "data_type": "double",
+              "time_display_mode": "Minutes and Seconds",
+              "red_start_time": 15,
+              "yellow_start_time": 30
+            }
+          },
+          {
+            "title": "BatteryVoltage",
+            "x": 640.0,
+            "y": 0.0,
+            "width": 256.0,
+            "height": 128.0,
+            "type": "Voltage View",
+            "properties": {
+              "topic": "/AdvantageKit/SystemStats/BatteryVoltage",
+              "period": 0.06,
+              "data_type": "double",
+              "min_value": 6.0,
+              "max_value": 15.0,
+              "divisions": 3,
+              "inverted": false,
+              "orientation": "horizontal"
+            }
+          },
+          {
+            "title": "PoolRelative",
+            "x": 896.0,
+            "y": 640.0,
+            "width": 128.0,
+            "height": 128.0,
+            "type": "Toggle Switch",
+            "properties": {
+              "topic": "/Robot/PoolRelative",
+              "period": 0.06,
+              "data_type": "boolean"
+            }
+          },
+          {
+            "title": "Temperature (C)",
+            "x": 0.0,
+            "y": 512.0,
+            "width": 256.0,
+            "height": 256.0,
+            "type": "Graph",
+            "properties": {
+              "topic": "/Drive/Temperature",
+              "period": 0.033,
+              "data_type": "double",
+              "time_displayed": 600.0,
+              "color": 4278238420,
+              "line_width": 2.0
+            }
+          },
+          {
+            "title": "Gripper Status",
+            "x": 256.0,
+            "y": 512.0,
+            "width": 640.0,
+            "height": 256.0,
+            "type": "Large Text Display",
+            "properties": {
+              "topic": "/SmartDashboard/Gripper Status",
+              "period": 0.06,
+              "data_type": "string"
+            }
+          },
+          {
+            "title": "pH sensor",
+            "x": 0.0,
+            "y": 384.0,
+            "width": 896.0,
+            "height": 128.0,
+            "type": "Number Slider",
+            "properties": {
+              "topic": "/Sensors/pH/Value",
+              "period": 0.1,
+              "data_type": "double",
+              "min_value": 0.0,
+              "max_value": 14.0,
+              "divisions": 15,
+              "update_continuously": false
+            }
+          },
+          {
+            "title": "Pressure",
+            "x": 640.0,
+            "y": 128.0,
+            "width": 384.0,
+            "height": 256.0,
+            "type": "Graph",
+            "properties": {
+              "topic": "/Drive/Pressure",
+              "period": 0.05,
+              "data_type": "double",
+              "time_displayed": 5.0,
+              "color": 4278238420,
+              "line_width": 2.0
+            }
+          },
+          {
+            "title": "brightness",
+            "x": 896.0,
+            "y": 384.0,
+            "width": 128.0,
+            "height": 128.0,
+            "type": "Text Display",
+            "properties": {
+              "topic": "/CameraPublisher/USB Camera 0/Property/brightness",
+              "period": 0.1,
+              "data_type": "int",
+              "show_submit_button": true
+            }
+          },
+          {
+            "title": "contrast",
+            "x": 896.0,
+            "y": 512.0,
+            "width": 128.0,
+            "height": 128.0,
+            "type": "Text Display",
+            "properties": {
+              "topic": "/CameraPublisher/USB Camera 0/Property/contrast",
+              "period": 0.1,
+              "data_type": "int",
+              "show_submit_button": true
+            }
+          },
+          {
+            "title": "USB Camera 0",
+            "x": 0.0,
+            "y": 768.0,
+            "width": 1024.0,
+            "height": 768.0,
+            "type": "Camera Stream",
+            "properties": {
+              "topic": "/CameraPublisher/USB Camera 0",
+              "period": 0.1,
+              "rotation_turns": 0
+            }
+          },
+          {
+            "title": "CPUTempCelsius",
+            "x": 896.0,
+            "y": 0.0,
+            "width": 128.0,
+            "height": 128.0,
+            "type": "Radial Gauge",
+            "properties": {
+              "topic": "/AdvantageKit/SystemStats/CPUTempCelsius",
+              "period": 0.1,
+              "data_type": "double",
+              "start_angle": -170.0,
+              "end_angle": 170.0,
+              "min_value": 0.0,
+              "max_value": 100.0,
+              "number_of_labels": 0,
+              "wrap_value": false,
+              "show_pointer": true,
+              "show_ticks": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
