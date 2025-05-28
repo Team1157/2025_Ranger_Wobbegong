@@ -2,6 +2,9 @@ package frc.robot.subsystems;
 
 import org.littletonrobotics.junction.Logger;
 
+import org.photonvision.PhotonCamera;
+import org.photonvision.common.hardware.VisionLEDMode;
+
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -18,7 +21,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 public class SensorSubsystem extends SubsystemBase {
     // Hardware
     private final AnalogInput m_phSensor;
-
+    PhotonCamera camerawithled = new PhotonCamera("Camera_Module_v1");
     // pH calculation constants
     private static final double VOLTS_TO_PH_SLOPE = -0.0172; // This value may need calibration
     private static final double PH_CALIBRATION_OFFSET = 7.0; // Neutral pH at specified voltage
@@ -46,7 +49,7 @@ public class SensorSubsystem extends SubsystemBase {
         camera.setPixelFormat(PixelFormat.kMJPEG);
         // Configure the analog input for better readings
         m_phSensor.setAverageBits(4); // Average 16 samples for noise reduction
-        
+        camerawithled.setLED(VisionLEDMode.kBlink);
         // Initialize NetworkTable publishers
         NetworkTableInstance nt = NetworkTableInstance.getDefault();
         m_rawVoltagePublisher = nt.getDoubleTopic("/Sensors/pH/RawVoltage").publish();
