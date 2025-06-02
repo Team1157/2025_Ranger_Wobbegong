@@ -9,6 +9,8 @@ import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.cscore.UsbCamera;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.util.PixelFormat;
+import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.BooleanSubscriber;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -36,6 +38,9 @@ public class SensorSubsystem extends SubsystemBase {
     private final DoublePublisher m_phValuePublisher;
     private final DoublePublisher m_filteredPhValuePublisher;
     
+    private final BooleanPublisher m_LEDstate;
+    private final BooleanSubscriber m_LEDStateSubscriber;
+
     /**
      * 
      * @param pHSensorAnalogPort The analog input port the pH sensor is connected to
@@ -49,12 +54,13 @@ public class SensorSubsystem extends SubsystemBase {
         camera.setPixelFormat(PixelFormat.kMJPEG);
         // Configure the analog input for better readings
         m_phSensor.setAverageBits(4); // Average 16 samples for noise reduction
-        camerawithled.setLED(VisionLEDMode.kBlink);
         // Initialize NetworkTable publishers
         NetworkTableInstance nt = NetworkTableInstance.getDefault();
         m_rawVoltagePublisher = nt.getDoubleTopic("/Sensors/pH/RawVoltage").publish();
         m_phValuePublisher = nt.getDoubleTopic("/Sensors/pH/Value").publish();
         m_filteredPhValuePublisher = nt.getDoubleTopic("/Sensors/pH/FilteredValue").publish();
+        m_LEDstate = nt.getBooleanTopic("/Sensors/pH/LEDstate").publish();
+        m_LEDStateSubscriber = nt.getBooleanTopic("/Sensors/pH/LEDstate").subscribe(false); // default: off
         
         // Log that we've initialized
         Logger.recordOutput("PhSensor/Initialized", true);
@@ -64,7 +70,14 @@ public class SensorSubsystem extends SubsystemBase {
     public void periodic() {
         // Get the raw voltage from the sensor (0-5V range mapped to 0-5000mV)
         double rawVoltage = m_phSensor.getVoltage() * 1000; // Convert to millivolts
+        boolean ledShouldBeOn = m_LEDStateSubscriber.get();
+        if (ledShouldBeOn) {
+            camerawithled.setLED(VisionLEDMode.kOn);
+        } else {
+            camerawithled.setLED(VisionLEDMode.kOff);
+        }
         
+
         double phValue = convertVoltageToPh(rawVoltage);
         
         // Apply low-pass filter to smooth readings (I still dont trust the sensor)
@@ -76,6 +89,7 @@ public class SensorSubsystem extends SubsystemBase {
         m_filteredPhValuePublisher.set(m_filteredPhValue);
         
         // Log values using AdvantageKit
+        Logger.recordOutput("PhSensor/LEDState", ledShouldBeOn);
         Logger.recordOutput("PhSensor/RawVoltage", rawVoltage);
         Logger.recordOutput("PhSensor/PhValue", phValue);
         Logger.recordOutput("PhSensor/FilteredPhValue", m_filteredPhValue);
