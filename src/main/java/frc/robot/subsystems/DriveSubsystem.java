@@ -16,13 +16,13 @@ import frc.robot.util.BlueRoboticsBasicESC;
 public class DriveSubsystem extends SubsystemBase {
     // Thruster definitions
     private final BlueRoboticsBasicESC m_leftFront45 = new BlueRoboticsBasicESC(0);
-    private final BlueRoboticsBasicESC m_leftRear45 = new BlueRoboticsBasicESC(5);
-    private final BlueRoboticsBasicESC m_rightFront45 = new BlueRoboticsBasicESC(7);
-    private final BlueRoboticsBasicESC m_rightRear45 = new BlueRoboticsBasicESC(1);
-    private final BlueRoboticsBasicESC m_leftFrontForward = new BlueRoboticsBasicESC(6);
+    private final BlueRoboticsBasicESC m_leftRear45 = new BlueRoboticsBasicESC(6);
+    private final BlueRoboticsBasicESC m_rightFront45 = new BlueRoboticsBasicESC(1);
+    private final BlueRoboticsBasicESC m_rightRear45 = new BlueRoboticsBasicESC(7);
+    private final BlueRoboticsBasicESC m_leftFrontForward = new BlueRoboticsBasicESC(5);
     private final BlueRoboticsBasicESC m_leftRearForward = new BlueRoboticsBasicESC(4);
-    private final BlueRoboticsBasicESC m_rightFrontForward = new BlueRoboticsBasicESC(3);
-    private final BlueRoboticsBasicESC m_rightRearForward = new BlueRoboticsBasicESC(2);
+    private final BlueRoboticsBasicESC m_rightFrontForward = new BlueRoboticsBasicESC(2);
+    private final BlueRoboticsBasicESC m_rightRearForward = new BlueRoboticsBasicESC(3);
     
     // Gyro definition
     private final ADIS16448_IMU m_imu = new ADIS16448_IMU();
@@ -168,14 +168,14 @@ public void drive(double poolX, double poolY, double poolZ, double yaw, double p
         
     m_leftFront45.set(.45*(poolY + poolX + yaw));      
     m_leftRear45.set(-.45*(-poolY + poolX + yaw));   
-    m_rightFront45.set(.45*(poolY - poolX - yaw));     
-    m_rightRear45.set(.45*(-poolY - poolX - yaw));     
+    m_rightFront45.set(-.45*(poolY - poolX + yaw));     
+    m_rightRear45.set(-.45*(-poolY - poolX + yaw));     
     
     // Vertical, pitch, and roll control
-    m_leftFrontForward.set(.45*(poolZ - roll + pitch));
-    m_leftRearForward.set(.45*(poolZ - roll - pitch));
-    m_rightFrontForward.set(.45*(poolZ + roll + pitch));
-    m_rightRearForward.set(.45*(poolZ + roll - pitch));
+    m_leftRearForward.set(.45*(poolZ - roll + pitch));
+    m_leftFrontForward.set(.45*(poolZ - roll - pitch));
+    m_rightFrontForward.set(-.45*(poolZ + roll + pitch));
+    m_rightRearForward.set(-.45*(poolZ + roll - pitch));
         
     // Log thruster powers to AdvantageKit as they're set
     Logger.recordOutput("Drive/CommandedPowers/LeftFront45", poolY + poolX + yaw);

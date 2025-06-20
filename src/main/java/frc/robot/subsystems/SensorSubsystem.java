@@ -52,6 +52,7 @@ public class SensorSubsystem extends SubsystemBase {
         camera.setFPS(30);
         camera.setResolution(640, 40);
         camera.setPixelFormat(PixelFormat.kMJPEG);
+
         // Configure the analog input for better readings
         m_phSensor.setAverageBits(4); // Average 16 samples for noise reduction
         // Initialize NetworkTable publishers
@@ -107,7 +108,7 @@ public class SensorSubsystem extends SubsystemBase {
         
         // Convert millivolts to pH using a linear relationship
         // pH = offset + slope * (voltage - calibration_voltage)
-        return PH_CALIBRATION_OFFSET + VOLTS_TO_PH_SLOPE * (millivolts - CALIBRATION_VOLTAGE * 1000);
+        return ((PH_CALIBRATION_OFFSET + VOLTS_TO_PH_SLOPE * (millivolts - CALIBRATION_VOLTAGE * 1000))-33);
     }
     
     /**

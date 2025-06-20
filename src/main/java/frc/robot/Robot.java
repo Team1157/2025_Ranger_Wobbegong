@@ -136,7 +136,7 @@ public class Robot extends LoggedRobot {
         m_driveSubsystem,
         m_simulationSubsystem,
         () -> -applyDeadband(m_controller.getLeftY(), 0.15),  // Forward/backward
-        () -> -applyDeadband(m_controller.getLeftX(), 0.15),  // Left/right
+        () -> -applyDeadband(-m_controller.getLeftX(), 0.15),  // Left/right
         () -> applyDeadband(m_controller.getRightY(), 0.15),  // Up/down
         () -> applyDeadband(m_controller.getRightX(), 0.15),  // Yaw rotation
         () -> m_controller.getLeftTriggerAxis() - m_controller.getRightTriggerAxis(), // Roll
